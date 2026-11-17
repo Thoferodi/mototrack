@@ -2,7 +2,7 @@
 
 import { useTransition } from 'react'
 import { Button } from '@/components/ui/button'
-import { updateMechanicOrderStatus } from '../actions'
+import { updateMechanicOrderStatus } from '../../actions'
 import { Database } from '@/types/database.types'
 import { Search, Wrench, PackageCheck, CheckCircle2, Loader2 } from 'lucide-react'
 
