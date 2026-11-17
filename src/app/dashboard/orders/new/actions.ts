@@ -1,6 +1,6 @@
 'use server'
 
-import createServerSupabaseClient() from '@/supabase/server'
+import { createServerSupabaseClient } from '@/supabase/server'
 import { Database } from '@/types/database.types'
 
 export async function getWorkshop() {
