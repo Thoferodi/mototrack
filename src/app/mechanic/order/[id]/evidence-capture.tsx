@@ -3,7 +3,7 @@
 import { useState, useTransition } from 'react'
 import { Button } from '@/components/ui/button'
 import { Camera, Send, Loader2 } from 'lucide-react'
-import { saveEvidence } from './actions'
+import { saveEvidence } from '../../actions'
 
 // Nota: En una implementación real, importaríamos browser-image-compression
 // import imageCompression from 'browser-image-compression'
