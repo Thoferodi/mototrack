@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { Plus, LayoutDashboard, Bike, User, ClipboardList } from 'lucide-react'
-import { createClient } from '@/supabase/server'
+import { createServerSupabaseClient } from '@/supabase/server'
 import { Database } from '@/types/database.types'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -21,7 +21,7 @@ const KANBAN_COLUMNS = [
 ]
 
 export default async function OrdersPage() {
-  const supabase = createClient()
+  const supabase = createServerSupabaseClient()
 
   // Fetch orders with joins
   const { data: orders, error } = await supabase
