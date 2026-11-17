@@ -1,10 +1,10 @@
 'use server'
 
-import { createClient } from '@/supabase/server'
+import createServerSupabaseClient() from '@/supabase/server'
 import { Database } from '@/types/database.types'
 
 export async function getWorkshop() {
-  const supabase = createClient()
+  const supabase = createServerSupabaseClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return null
 
