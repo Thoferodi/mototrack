@@ -18,7 +18,7 @@ export async function getWorkshop() {
 }
 
 export async function searchMotorcycleByPlate(plate: string) {
-  const supabase = createClient()
+  const supabase = createServerSupabaseClient()
   const workshopId = await getWorkshop()
   if (!workshopId) throw new Error('No workshop found')
 
@@ -34,7 +34,7 @@ export async function searchMotorcycleByPlate(plate: string) {
 }
 
 export async function uploadEvidence(file: File, path: string) {
-  const supabase = createClient()
+  const supabase = createServerSupabaseClient()
   const { data, error } = await supabase.storage
     .from('evidences')
     .upload(path, file)
@@ -49,7 +49,7 @@ export async function uploadEvidence(file: File, path: string) {
 }
 
 export async function createWorkOrder(payload: any) {
-  const supabase = createClient()
+  const supabase = createServerSupabaseClient()
   const workshopId = await getWorkshop()
   if (!workshopId) throw new Error('No workshop found')
 
@@ -67,7 +67,7 @@ export async function createWorkOrder(payload: any) {
 }
 
 export async function ensureCustomer(customer: any) {
-  const supabase = createClient()
+  const supabase = createServerSupabaseClient()
   const workshopId = await getWorkshop()
   if (!workshopId) throw new Error('No workshop found')
 
@@ -87,7 +87,7 @@ export async function ensureCustomer(customer: any) {
 }
 
 export async function ensureMotorcycle(motorcycle: any) {
-  const supabase = createClient()
+  const supabase = createServerSupabaseClient()
   const workshopId = await getWorkshop()
   if (!workshopId) throw new Error('No workshop found')
 
