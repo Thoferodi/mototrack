@@ -93,7 +93,7 @@ export default async function PublicTrackerPage({ params }: PageProps) {
     )
   }
 
-  const currentStatus = statusConfig[order.status]
+  const currentStatus = statusConfig[order.status as Status]
   const StatusIcon = currentStatus.icon
   
   const timeline = order.order_timeline_events?.sort((a: any, b: any) => 
