@@ -44,7 +44,7 @@ export async function signIn(formData: FormData) {
   if (role === 'mechanic') {
     redirect('/mechanic')
   } else if (role === 'owner' || role === 'manager' || role === 'receptionist') {
-    redirect('/dashboard')
+    redirect('/dashboard/orders')
   }
 
   return { error: 'Rol no reconocido' }

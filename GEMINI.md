@@ -29,11 +29,20 @@ Plataforma B2B Multi-Tenant (Multi-Inquilino) optimizada para talleres de motoci
 3. **Estados de la Orden:** Manejar estrictamente la máquina de estados: `received` -> `diagnosing` -> `waiting_approval` -> `in_repair` -> `quality_check` -> `ready_for_pickup` -> `delivered`.
 4. **Control de Presupuestos:** Una vez que el cliente aprueba o rechaza los ítems desde su enlace público, los botones de aprobación deben bloquearse en modo lectura.
 
-## Estado Actual (Pausa)
-- Base de datos (Multi-Tenant) y RLS configurados.
-- Autenticación, Middleware y Clientes SSR listos.
-- Flujo Administrativo: Kanban (`/dashboard/orders`), Recepción (`/dashboard/orders/new`) y Detalle de Presupuesto (`/dashboard/orders/[id]`) completados.
-- Flujo Cliente: Live Tracker público (`/track/[token]`) funcional y mobile-first.
-- Seguridad: Login con ruteo inteligente por roles (Admin vs. Mecánico).
-- Flujo Operativo: Interfaz móvil "Manos Sucias" para mecánicos (`/mechanic`) completada con botones táctiles (Fat-Finger Friendly).
-- **Siguiente paso pendiente:** Implementar el panel de personalización del taller en `src/app/dashboard/settings/page.tsx` (Subida de logo WebP en Supabase Storage y configuración de color principal de la marca).
+## Estado Actual y Registro de Avances
+
+### Stack Operativo
+- **Core:** Next.js 14, TypeScript.
+- **UI/UX:** Tailwind CSS, Shadcn UI, Lucide Icons.
+- **Backend:** Supabase (Auth, Database, Storage).
+- **Herramientas Especializadas:** `react-signature-canvas` (firmas digitales), `browser-image-compression` (optimización de imágenes).
+
+### Hitos Completados
+- **Infraestructura:** Reconstrucción de archivos raíz (`package.json`, `tsconfig.json`, `tailwind.config.ts`, `.gitignore`).
+- **Calidad de Código:** Resolución integral de errores de sintaxis JSX y tipado estricto (`tsc --noEmit` y `next build` validados con éxito).
+- **Despliegue:** Aplicación activa en producción vía Vercel.
+- **Frontend:** Rediseño completo de la Landing Page principal (`src/app/page.tsx`).
+
+### Fase Actual
+- **Auditoría Funcional QA:** Revisión profunda de flujos (menú por menú, rutas, botones y Server Actions).
+- **Optimización:** Configuración pendiente de Vercel Cron para tareas de mantenimiento.

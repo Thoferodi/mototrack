@@ -20,7 +20,6 @@ export default function LandingPage() {
           <div className="hidden md:flex gap-8 text-sm font-medium text-slate-600">
             <Link href="#funciones" className="hover:text-orange-600 transition-colors">Funciones</Link>
             <Link href="#como-funciona" className="hover:text-orange-600 transition-colors">Cómo funciona</Link>
-            <Link href="#talleres" className="hover:text-orange-600 transition-colors">Talleres</Link>
             <Link href="#precio" className="hover:text-orange-600 transition-colors">Precio</Link>
           </div>
 
@@ -52,7 +51,7 @@ export default function LandingPage() {
             
             <div className="flex flex-col sm:flex-row gap-4">
               <Button asChild size="lg" className="bg-orange-600 hover:bg-orange-700 text-white rounded-md text-base h-12 px-8 shadow-md transition-transform hover:-translate-y-0.5">
-                <Link href="/dashboard">
+                <Link href="/dashboard/orders">
                   Comenzar Gratis <ArrowRight className="ml-2 h-4 w-4" />
                 </Link>
               </Button>
