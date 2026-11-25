@@ -78,17 +78,17 @@ export default async function MechanicOrderDetailPage({ params }: PageProps) {
             </span>
           </Link>
 
-          <div className="text-center min-w-0 px-1">
+          <div className="text-center min-w-0 px-1 flex-1">
             <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest leading-none mb-1">
               Orden #{order.order_number ?? order.id.slice(0, 8)}
             </p>
-            <h2 className="text-xl sm:text-2xl font-black font-mono tracking-tighter leading-none truncate">
+            <h2 className="text-lg sm:text-2xl font-black font-mono tracking-tight leading-none whitespace-nowrap">
               {motorcycle?.license_plate || 'SIN-PLACA'}
             </h2>
           </div>
 
-          <div className="flex items-center gap-2 shrink-0">
-            <Badge className="bg-primary text-slate-900 font-black uppercase text-[10px] rounded-full px-3 py-1.5">
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+            <Badge className="bg-primary text-slate-900 font-black uppercase text-[10px] rounded-full px-2.5 py-1 max-w-[118px] sm:max-w-none truncate">
               {getWorkOrderStatusLabel(order.status)}
             </Badge>
             <MechanicSignOutButton compact />

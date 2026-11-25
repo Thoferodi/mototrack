@@ -49,23 +49,26 @@ export function OrdersBoard({ orders }: { orders: OrderWithDetails[] }) {
   const [view, setView] = React.useState<'active' | 'delivered'>('active')
 
   const normalizedSearch = search.trim().toLowerCase()
+  const normalizedCompactSearch = normalizedSearch.replace(/\s+/g, '')
   const filteredOrders = React.useMemo(() => {
     if (!normalizedSearch) return orders
     return orders.filter((order) => {
       const plate = order.motorcycles?.license_plate?.toLowerCase() || ''
+      const compactPlate = plate.replace(/\s+/g, '')
       const model = `${order.motorcycles?.brand || ''} ${order.motorcycles?.model || ''}`.toLowerCase()
       const customer = order.motorcycles?.customers?.full_name?.toLowerCase() || ''
       const shortId = order.id.slice(0, 8).toLowerCase()
       const orderNum = String(order.order_number || '')
       return (
         plate.includes(normalizedSearch) ||
+        (normalizedCompactSearch.length > 0 && compactPlate.includes(normalizedCompactSearch)) ||
         model.includes(normalizedSearch) ||
         customer.includes(normalizedSearch) ||
         shortId.includes(normalizedSearch) ||
         orderNum.includes(normalizedSearch)
       )
     })
-  }, [orders, normalizedSearch])
+  }, [orders, normalizedSearch, normalizedCompactSearch])
 
   const activeOrders = filteredOrders.filter(
     (o) => o.status !== 'delivered' && o.status !== 'cancelled'

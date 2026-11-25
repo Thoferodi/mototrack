@@ -167,8 +167,8 @@ export function BudgetManager({
             </div>
           )}
 
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div className="md:col-span-2 space-y-2">
+          <div className="grid grid-cols-1 sm:grid-cols-6 gap-3">
+            <div className="sm:col-span-4 space-y-1.5">
               <Label htmlFor="desc" className="text-xs font-bold uppercase">
                 Descripción del Trabajo o Repuesto
               </Label>
@@ -182,7 +182,7 @@ export function BudgetManager({
                 className="h-11"
               />
             </div>
-            <div className="space-y-2">
+            <div className="sm:col-span-2 space-y-1.5">
               <Label htmlFor="type" className="text-xs font-bold uppercase">
                 Tipo
               </Label>
@@ -204,37 +204,35 @@ export function BudgetManager({
                 </div>
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-2">
-              <div className="space-y-2">
-                <Label htmlFor="qty" className="text-xs font-bold uppercase">
-                  Cant.
-                </Label>
-                <Input
-                  id="qty"
-                  type="number"
-                  value={quantity}
-                  onChange={(e) => setQuantity(Math.max(1, Number(e.target.value) || 1))}
-                  min={1}
-                  required
-                  disabled={isAdding}
-                  className="h-11"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="price" className="text-xs font-bold uppercase">
-                  Precio U.
-                </Label>
-                <Input
-                  id="price"
-                  type="number"
-                  value={unitPrice}
-                  onChange={(e) => setUnitPrice(Math.max(0, Number(e.target.value) || 0))}
-                  min={0}
-                  required
-                  disabled={isAdding}
-                  className="h-11"
-                />
-              </div>
+            <div className="sm:col-span-2 space-y-1.5">
+              <Label htmlFor="qty" className="text-xs font-bold uppercase">
+                Cantidad
+              </Label>
+              <Input
+                id="qty"
+                type="number"
+                value={quantity}
+                onChange={(e) => setQuantity(Math.max(1, Number(e.target.value) || 1))}
+                min={1}
+                required
+                disabled={isAdding}
+                className="h-11"
+              />
+            </div>
+            <div className="sm:col-span-4 space-y-1.5">
+              <Label htmlFor="price" className="text-xs font-bold uppercase">
+                Precio Unitario
+              </Label>
+              <Input
+                id="price"
+                type="number"
+                value={unitPrice}
+                onChange={(e) => setUnitPrice(Math.max(0, Number(e.target.value) || 0))}
+                min={0}
+                required
+                disabled={isAdding}
+                className="h-11"
+              />
             </div>
           </div>
           <Button type="submit" disabled={isAdding} className="h-11 font-bold">
@@ -251,12 +249,12 @@ export function BudgetManager({
           <table className="w-full text-sm text-left">
             <thead className="text-[10px] text-muted-foreground uppercase bg-muted/30 border-b">
               <tr>
-                <th className="px-6 py-3 font-bold">Concepto</th>
-                <th className="px-4 py-3 font-bold text-center">Estado</th>
-                <th className="px-4 py-3 font-bold text-center">Cant.</th>
-                <th className="px-4 py-3 font-bold text-right">Precio</th>
-                <th className="px-4 py-3 font-bold text-right">Total</th>
-                <th className="px-4 py-3"></th>
+                <th className="px-4 py-3 font-bold">Concepto</th>
+                <th className="px-2 py-3 font-bold text-center">Estado</th>
+                <th className="px-2 py-3 font-bold text-center">Cant.</th>
+                <th className="px-3 py-3 font-bold text-right">Precio</th>
+                <th className="px-3 py-3 font-bold text-right">Total</th>
+                <th className="px-2 py-3"></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-muted/30">
@@ -273,7 +271,7 @@ export function BudgetManager({
                     key={item.id}
                     className={`hover:bg-muted/5 transition-colors ${isRejected ? 'opacity-55 bg-slate-50/60' : ''}`}
                   >
-                    <td className="px-6 py-4">
+                    <td className="px-4 py-3.5">
                       <div className="flex flex-col gap-1">
                         <span className={`font-bold text-slate-700 ${isRejected ? 'line-through' : ''}`}>
                           {item.description}
@@ -288,20 +286,20 @@ export function BudgetManager({
                         </div>
                       </div>
                     </td>
-                    <td className="px-4 py-4 text-center">
+                    <td className="px-2 py-3.5 text-center">
                       <Badge variant="outline" className={`text-[10px] gap-1 ${statusCfg.className}`}>
                         <StatusIcon className="w-3 h-3" />
                         {statusCfg.label}
                       </Badge>
                     </td>
-                    <td className="px-4 py-4 text-center font-medium">{qty}</td>
-                    <td className="px-4 py-4 text-right text-muted-foreground">
+                    <td className="px-2 py-3.5 text-center font-medium">{qty}</td>
+                    <td className="px-3 py-3.5 text-right text-muted-foreground whitespace-nowrap">
                       ${price.toLocaleString('es-CL')}
                     </td>
-                    <td className="px-4 py-4 text-right font-bold text-slate-900">
+                    <td className="px-3 py-3.5 text-right font-bold text-slate-900 whitespace-nowrap">
                       ${(qty * price).toLocaleString('es-CL')}
                     </td>
-                    <td className="px-4 py-4 text-right">
+                    <td className="px-2 py-3.5 text-right">
                       {confirmDeleteId === item.id ? (
                         <div className="inline-flex items-center gap-1">
                           <Button

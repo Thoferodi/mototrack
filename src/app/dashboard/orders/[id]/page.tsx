@@ -56,12 +56,17 @@ export default async function OrderDetailPage({ params }: PageProps) {
     return notFound()
   }
 
-  const [{ data: workshop }, { data: recentItems }] = await Promise.all([
+  const [{ data: workshop }, { data: savedCatalog }, { data: recentItems }] = await Promise.all([
     supabase
       .from('workshops')
       .select('name, slug')
       .eq('id', order.workshop_id)
       .single(),
+    supabase
+      .from('catalog_items')
+      .select('id, name, type, default_price')
+      .eq('workshop_id', order.workshop_id)
+      .order('name', { ascending: true }),
     supabase
       .from('order_items')
       .select('id, description, type, unit_price')
@@ -71,6 +76,17 @@ export default async function OrderDetailPage({ params }: PageProps) {
 
   const seen = new Set<string>()
   const catalogItems: CatalogTemplateItem[] = []
+  for (const item of savedCatalog || []) {
+    const key = `${item.type}:${item.name.trim().toLowerCase()}`
+    if (seen.has(key)) continue
+    seen.add(key)
+    catalogItems.push({
+      id: item.id,
+      name: item.name,
+      type: item.type,
+      default_price: Number(item.default_price ?? 0),
+    })
+  }
   for (const item of recentItems || []) {
     const key = `${item.type}:${item.description.trim().toLowerCase()}`
     if (seen.has(key)) continue

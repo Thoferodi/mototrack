@@ -12,6 +12,7 @@ interface ItemApprovalButtonsProps {
   itemId: string
   approved: boolean | null
   isLocked: boolean
+  onStatusUpdated?: (itemId: string, approved: boolean, totalAmount?: number) => void
 }
 
 export function ItemApprovalButtons({
@@ -19,6 +20,7 @@ export function ItemApprovalButtons({
   itemId,
   approved,
   isLocked,
+  onStatusUpdated,
 }: ItemApprovalButtonsProps) {
   const router = useRouter()
   const [pendingAction, setPendingAction] = useState<'approved' | 'rejected' | null>(null)
@@ -39,6 +41,7 @@ export function ItemApprovalButtons({
         setError(result.error || 'No se pudo actualizar el ítem.')
         return
       }
+      onStatusUpdated?.(itemId, status === 'approved', result.totalAmount)
       router.refresh()
     } catch (err: any) {
       console.error('Error updating item approval:', err)

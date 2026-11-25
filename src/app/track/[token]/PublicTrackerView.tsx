@@ -14,7 +14,6 @@ import {
   XCircle,
   MapPin,
   Phone,
-  Lock,
   ImageIcon,
   ArrowLeft,
   MessageSquare,
@@ -25,7 +24,7 @@ import {
   isValidUUID,
   parseMediaUrls,
 } from '@/lib/workorder-status'
-import { ItemApprovalButtons } from './ItemApprovalButtons'
+import { PublicBudgetCard, PublicBudgetItem } from './PublicBudgetCard'
 
 const statusConfig: Record<
   WorkOrderStatus,
@@ -163,14 +162,8 @@ export async function PublicTrackerView({ token, workshopSlug }: PublicTrackerVi
       (a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime()
     ) || []
 
-  const items = (order.order_items as any[] | null) || []
+  const items = ((order.order_items as PublicBudgetItem[] | null) || [])
   const isWaitingApproval = orderStatus === 'waiting_approval'
-
-  // Excluir ítems rechazados (approved === false)
-  const total = items.reduce((acc, item) => {
-    if (item.approved === false) return acc
-    return acc + Number(item.quantity ?? 1) * Number(item.unit_price ?? 0)
-  }, 0)
 
   const cleanPhone = order.workshops?.phone_whatsapp?.replace(/\D/g, '') || ''
   const backHref = workshopSlug ? `/t/${workshopSlug}` : '/track'
@@ -296,102 +289,12 @@ export async function PublicTrackerView({ token, workshopSlug }: PublicTrackerVi
         </div>
 
         {/* Presupuesto y Aprobación */}
-        <Card className="border-2 shadow-sm overflow-hidden">
-          <CardHeader className="bg-slate-50/80 border-b py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-            <CardTitle className="text-lg flex items-center gap-2">
-              <PackageCheck className="w-5 h-5 text-primary" />
-              Presupuesto Detallado
-            </CardTitle>
-            {!isWaitingApproval ? (
-              <Badge
-                variant="secondary"
-                className="gap-1.5 bg-amber-100 text-amber-800 border-amber-200 text-xs py-1 w-fit"
-              >
-                <Lock className="w-3.5 h-3.5" />
-                Presupuesto cerrado - Moto en {currentStatus.label.toLowerCase()}
-              </Badge>
-            ) : (
-              <Badge
-                variant="outline"
-                className="gap-1.5 bg-yellow-50 text-yellow-800 border-yellow-300 text-xs py-1 animate-pulse w-fit"
-              >
-                Acción requerida: Aprueba o rechaza ítems
-              </Badge>
-            )}
-          </CardHeader>
-          <CardContent className="p-0">
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead className="bg-slate-50/50 text-[10px] font-bold text-muted-foreground uppercase border-b">
-                  <tr>
-                    <th className="px-4 py-2 text-left">Concepto</th>
-                    <th className="px-4 py-2 text-right">Cant. x Precio</th>
-                    <th className="px-4 py-2 text-right">Total</th>
-                    <th className="px-4 py-2 text-center">Estado / Acción</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {items.map((item) => {
-                    const isRejected = item.approved === false
-                    const qty = Number(item.quantity ?? 1)
-                    const price = Number(item.unit_price ?? 0)
-                    return (
-                      <tr
-                        key={item.id}
-                        className={isRejected ? 'opacity-50 bg-slate-50/50' : ''}
-                      >
-                        <td className="px-4 py-3">
-                          <div
-                            className={`font-semibold text-slate-800 ${
-                              isRejected ? 'line-through' : ''
-                            }`}
-                          >
-                            {item.description}
-                          </div>
-                          <div className="text-[10px] text-muted-foreground uppercase font-bold">
-                            {item.type === 'labor' ? 'Mano de Obra' : 'Repuesto'}
-                          </div>
-                        </td>
-                        <td className="px-4 py-3 text-right text-slate-600 whitespace-nowrap">
-                          {qty} x ${price.toLocaleString('es-CL')}
-                        </td>
-                        <td className="px-4 py-3 text-right font-bold text-slate-900 whitespace-nowrap">
-                          ${(qty * price).toLocaleString('es-CL')}
-                        </td>
-                        <td className="px-4 py-3 text-center">
-                          <ItemApprovalButtons
-                            trackingToken={token}
-                            itemId={item.id}
-                            approved={item.approved ?? null}
-                            isLocked={!isWaitingApproval}
-                          />
-                        </td>
-                      </tr>
-                    )
-                  })}
-                  {items.length === 0 && (
-                    <tr>
-                      <td colSpan={4} className="px-4 py-8 text-center text-muted-foreground italic">
-                        No se han agregado ítems al presupuesto aún.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-            <div className="bg-slate-900 p-4 flex justify-between items-center text-white">
-              <div>
-                <span className="text-sm font-bold uppercase tracking-wider opacity-80 block">
-                  {isWaitingApproval ? 'Total Activo' : 'Total Aprobado'}
-                </span>
-                <span className="text-[11px] text-slate-400">
-                  Excluye ítems rechazados
-                </span>
-              </div>
-              <span className="text-xl font-black">${total.toLocaleString('es-CL')}</span>
-            </div>
-          </CardContent>
-        </Card>
+        <PublicBudgetCard
+          trackingToken={token}
+          initialItems={items}
+          isWaitingApproval={isWaitingApproval}
+          currentStatusLabel={currentStatus.label}
+        />
 
         {/* Bitácora / Historial */}
         <div className="space-y-4">

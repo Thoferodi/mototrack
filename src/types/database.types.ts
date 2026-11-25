@@ -14,6 +14,50 @@ export type Database = {
   }
   public: {
     Tables: {
+      catalog_items: {
+        Row: {
+          created_at: string
+          default_price: number
+          id: string
+          name: string
+          notes: string | null
+          sku: string | null
+          type: Database["public"]["Enums"]["item_type"]
+          updated_at: string
+          workshop_id: string
+        }
+        Insert: {
+          created_at?: string
+          default_price?: number
+          id?: string
+          name: string
+          notes?: string | null
+          sku?: string | null
+          type: Database["public"]["Enums"]["item_type"]
+          updated_at?: string
+          workshop_id: string
+        }
+        Update: {
+          created_at?: string
+          default_price?: number
+          id?: string
+          name?: string
+          notes?: string | null
+          sku?: string | null
+          type?: Database["public"]["Enums"]["item_type"]
+          updated_at?: string
+          workshop_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "catalog_items_workshop_id_fkey"
+            columns: ["workshop_id"]
+            isOneToOne: false
+            referencedRelation: "workshops"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       customers: {
         Row: {
           created_at: string | null

@@ -1,6 +1,8 @@
 'use server'
 
+import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
+import { createServerSupabaseClient } from '@/supabase/server'
 import { Database } from '@/types/database.types'
 
 export type CatalogItemType = Database['public']['Enums']['item_type']
@@ -22,8 +24,43 @@ const catalogItemSchema = z.object({
   notes: z.string().trim().optional(),
 })
 
-const CATALOG_NOT_PERSISTED_MSG =
-  'La base de datos actual no incluye columna settings ni tabla catalog_items. Los ítems agregados en órdenes de trabajo aparecen aquí automáticamente.'
+const STAFF_ROLES = new Set(['owner', 'manager', 'admin', 'receptionist'])
+
+function isMissingCatalogTableError(error: { code?: string; message?: string } | null): boolean {
+  if (!error) return false
+  return (
+    error.code === '42P01' ||
+    error.code === 'PGRST205' ||
+    Boolean(error.message?.toLowerCase().includes('catalog_items'))
+  )
+}
+
+async function getAuthorizedCatalogContext() {
+  const supabase = createServerSupabaseClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) {
+    throw new Error('No autenticado')
+  }
+
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('workshop_id, role')
+    .eq('id', user.id)
+    .single()
+
+  if (!profile || !profile.workshop_id) {
+    throw new Error('Perfil de taller no encontrado')
+  }
+
+  if (!STAFF_ROLES.has(String(profile.role))) {
+    throw new Error('No tienes permisos para modificar el catálogo')
+  }
+
+  return { supabase, workshopId: profile.workshop_id }
+}
 
 export async function createCatalogItem(input: {
   name: string
@@ -36,11 +73,54 @@ export async function createCatalogItem(input: {
   if (!parsed.success) {
     return { success: false, error: parsed.error.issues[0]?.message || 'Datos inválidos' }
   }
-  return { success: false, error: CATALOG_NOT_PERSISTED_MSG }
+
+  try {
+    const { supabase, workshopId } = await getAuthorizedCatalogContext()
+    const { data, error } = await supabase
+      .from('catalog_items')
+      .insert({
+        workshop_id: workshopId,
+        name: parsed.data.name,
+        type: parsed.data.type,
+        default_price: parsed.data.default_price,
+        sku: parsed.data.sku || null,
+        notes: parsed.data.notes || null,
+      })
+      .select('id, name, type, default_price, sku, notes')
+      .single()
+
+    if (error) {
+      if (isMissingCatalogTableError(error)) {
+        return {
+          success: false,
+          error:
+            'Falta crear la tabla catalog_items en Supabase. Ejecuta supabase/catalog_items.sql en el SQL Editor.',
+        }
+      }
+      return { success: false, error: error.message }
+    }
+
+    revalidatePath('/dashboard/catalog')
+    revalidatePath('/dashboard/orders/[id]', 'page')
+
+    return {
+      success: true,
+      item: {
+        id: data.id,
+        name: data.name,
+        type: data.type,
+        default_price: Number(data.default_price ?? 0),
+        sku: data.sku || undefined,
+        notes: data.notes || undefined,
+      },
+    }
+  } catch (err: any) {
+    return { success: false, error: err?.message || 'Error al crear el ítem' }
+  }
 }
 
 export async function updateCatalogItem(
-  _itemId: string,
+  itemId: string,
   input: {
     name: string
     type: CatalogItemType
@@ -53,11 +133,79 @@ export async function updateCatalogItem(
   if (!parsed.success) {
     return { success: false, error: parsed.error.issues[0]?.message || 'Datos inválidos' }
   }
-  return { success: false, error: CATALOG_NOT_PERSISTED_MSG }
+
+  try {
+    const { supabase, workshopId } = await getAuthorizedCatalogContext()
+    const { data, error } = await supabase
+      .from('catalog_items')
+      .update({
+        name: parsed.data.name,
+        type: parsed.data.type,
+        default_price: parsed.data.default_price,
+        sku: parsed.data.sku || null,
+        notes: parsed.data.notes || null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', itemId)
+      .eq('workshop_id', workshopId)
+      .select('id')
+      .maybeSingle()
+
+    if (error) {
+      if (isMissingCatalogTableError(error)) {
+        return {
+          success: false,
+          error:
+            'Falta crear la tabla catalog_items en Supabase. Ejecuta supabase/catalog_items.sql en el SQL Editor.',
+        }
+      }
+      return { success: false, error: error.message }
+    }
+
+    if (!data) {
+      return { success: false, error: 'El ítem no existe en tu catálogo.' }
+    }
+
+    revalidatePath('/dashboard/catalog')
+    revalidatePath('/dashboard/orders/[id]', 'page')
+    return { success: true }
+  } catch (err: any) {
+    return { success: false, error: err?.message || 'Error al actualizar el ítem' }
+  }
 }
 
 export async function deleteCatalogItem(
-  _itemId: string
+  itemId: string
 ): Promise<{ success: boolean; error?: string }> {
-  return { success: false, error: CATALOG_NOT_PERSISTED_MSG }
+  try {
+    const { supabase, workshopId } = await getAuthorizedCatalogContext()
+    const { data, error } = await supabase
+      .from('catalog_items')
+      .delete()
+      .eq('id', itemId)
+      .eq('workshop_id', workshopId)
+      .select('id')
+      .maybeSingle()
+
+    if (error) {
+      if (isMissingCatalogTableError(error)) {
+        return {
+          success: false,
+          error:
+            'Falta crear la tabla catalog_items en Supabase. Ejecuta supabase/catalog_items.sql en el SQL Editor.',
+        }
+      }
+      return { success: false, error: error.message }
+    }
+
+    if (!data) {
+      return { success: false, error: 'El ítem no existe en tu catálogo.' }
+    }
+
+    revalidatePath('/dashboard/catalog')
+    revalidatePath('/dashboard/orders/[id]', 'page')
+    return { success: true }
+  } catch (err: any) {
+    return { success: false, error: err?.message || 'Error al eliminar el ítem' }
+  }
 }
