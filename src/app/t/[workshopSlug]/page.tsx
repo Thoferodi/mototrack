@@ -1,9 +1,11 @@
-import { createServerSupabaseClient } from '@/supabase/server'
+import { createAdminSupabaseClient } from '@/supabase/admin'
 import { notFound } from 'next/navigation'
 import { BuscadorPlaca } from './BuscadorPlaca'
 import { MapPin, Phone, MessageSquare, CheckCircle2, Clock, ShieldCheck, Settings } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
+
+export const dynamic = 'force-dynamic'
 
 interface WorkshopPageProps {
   params: {
@@ -12,12 +14,12 @@ interface WorkshopPageProps {
 }
 
 export default async function WorkshopPublicPage({ params }: WorkshopPageProps) {
-  const supabase = createServerSupabaseClient()
+  const supabase = createAdminSupabaseClient()
 
-  // 1. Obtener datos del taller por slug
+  // Obtener datos públicos del taller por slug
   const { data: workshop, error } = await supabase
     .from('workshops')
-    .select('*')
+    .select('id, name, slug, logo_url, address, phone, settings')
     .eq('slug', params.workshopSlug)
     .single()
 
@@ -26,6 +28,7 @@ export default async function WorkshopPublicPage({ params }: WorkshopPageProps) 
   }
 
   const primaryColor = (workshop.settings as any)?.primary_color || '#3b82f6'
+  const cleanWorkshopPhone = workshop.phone?.replace(/\D/g, '') || ''
 
   const SERVICES = [
     { name: 'Mantenimiento Preventivo', icon: CheckCircle2 },
@@ -49,11 +52,18 @@ export default async function WorkshopPublicPage({ params }: WorkshopPageProps) 
             )}
             <h1 className="text-xl font-bold tracking-tight text-slate-800">{workshop.name}</h1>
           </div>
-          <Button asChild variant="outline" size="sm" className="hidden md:flex">
-            <a href={`https://wa.me/${workshop.phone?.replace(/\D/g, '')}`} target="_blank" rel="noopener noreferrer" className="gap-2">
-              <MessageSquare className="w-4 h-4" /> Contactar
-            </a>
-          </Button>
+          {cleanWorkshopPhone && (
+            <Button asChild variant="outline" size="sm" className="hidden md:flex">
+              <a
+                href={`https://wa.me/${cleanWorkshopPhone}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="gap-2"
+              >
+                <MessageSquare className="w-4 h-4" /> Contactar
+              </a>
+            </Button>
+          )}
         </div>
       </header>
 
@@ -70,17 +80,32 @@ export default async function WorkshopPublicPage({ params }: WorkshopPageProps) 
               </p>
             </div>
 
-            <div className="flex flex-col sm:flex-row gap-4 pt-4">
-              <Button size="lg" className="h-14 px-8 text-lg font-bold shadow-lg shadow-blue-500/20" style={{ backgroundColor: primaryColor }} asChild>
-                <a href={`https://wa.me/${workshop.phone?.replace(/\D/g, '')}`} target="_blank" rel="noopener noreferrer">
-                  Agendar Cita por WhatsApp
-                </a>
-              </Button>
-            </div>
+            {cleanWorkshopPhone && (
+              <div className="flex flex-col sm:flex-row gap-4 pt-4">
+                <Button
+                  size="lg"
+                  className="h-14 px-8 text-lg font-bold shadow-lg shadow-blue-500/20 text-white"
+                  style={{ backgroundColor: primaryColor }}
+                  asChild
+                >
+                  <a
+                    href={`https://wa.me/${cleanWorkshopPhone}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    Agendar Cita por WhatsApp
+                  </a>
+                </Button>
+              </div>
+            )}
           </div>
 
           <div className="relative">
-            <BuscadorPlaca workshopId={workshop.id} primaryColor={primaryColor} />
+            <BuscadorPlaca
+              workshopId={workshop.id}
+              workshopSlug={workshop.slug}
+              primaryColor={primaryColor}
+            />
           </div>
         </section>
 
@@ -131,7 +156,6 @@ export default async function WorkshopPublicPage({ params }: WorkshopPageProps) 
           </div>
 
           <div className="h-64 md:h-full min-h-[300px] bg-slate-200 rounded-2xl overflow-hidden shadow-inner flex items-center justify-center relative">
-            {/* Iframe placeholder for Google Maps */}
             <div className="absolute inset-0 bg-slate-100 flex items-center justify-center flex-col p-8 text-center space-y-4">
               <MapPin className="w-12 h-12 text-slate-300" />
               <p className="text-slate-400 font-medium">Mapa interactivo próximamente</p>

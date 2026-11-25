@@ -1,17 +1,33 @@
 'use server'
 
-import { createServerSupabaseClient } from '@/supabase/server'
-import { redirect } from 'next/navigation'
+import { createAdminSupabaseClient } from '@/supabase/admin'
+import { normalizePlate } from '@/lib/workorder-status'
 
 export async function searchOrderByPlate(
   workshopId: string,
   plate: string,
   last4Phone: string
-) {
-  const supabase = createServerSupabaseClient()
+): Promise<{ success?: boolean; token?: string; error?: string }> {
+  const trimmedPlate = plate.trim()
+  const normalizedPlate = normalizePlate(plate)
+  const cleanLast4 = last4Phone.replace(/\D/g, '')
 
-  // 1. Buscar la moto por placa en este taller
-  const { data: motorcycle, error: motoError } = await supabase
+  if (!workshopId) {
+    return { error: 'Taller no especificado.' }
+  }
+  if (!normalizedPlate) {
+    return { error: 'Ingresa la placa de tu motocicleta.' }
+  }
+  if (!/^\d{4}$/.test(cleanLast4)) {
+    return { error: 'Ingresa exactamente los últimos 4 dígitos de tu celular.' }
+  }
+
+  const supabase = createAdminSupabaseClient()
+  const plateVariants = Array.from(
+    new Set([normalizedPlate, trimmedPlate.toUpperCase()])
+  )
+
+  const { data: motorcycles, error: motoError } = await supabase
     .from('motorcycles')
     .select(`
       id,
@@ -20,34 +36,37 @@ export async function searchOrderByPlate(
       )
     `)
     .eq('workshop_id', workshopId)
-    .eq('plate', plate.toUpperCase().trim())
-    .single()
+    .in('plate', plateVariants)
 
-  if (motoError || !motorcycle) {
-    return { error: 'No se encontró ninguna orden con esos datos.' }
+  if (motoError || !motorcycles || motorcycles.length === 0) {
+    return {
+      error: 'No encontramos ninguna motocicleta con esa placa y los últimos 4 dígitos ingresados.',
+    }
   }
 
-  // 2. Validar los últimos 4 dígitos del teléfono para privacidad
-  const customerPhone = (motorcycle.customers as any)?.phone || ''
-  const cleanedPhone = customerPhone.replace(/\D/g, '')
-  
-  if (!cleanedPhone.endsWith(last4Phone)) {
-    return { error: 'No se encontró ninguna orden con esos datos.' }
+  for (const motorcycle of motorcycles) {
+    const customerPhone = (motorcycle.customers as { phone?: string | null } | null)?.phone || ''
+    const cleanedPhone = customerPhone.replace(/\D/g, '')
+
+    if (cleanedPhone.endsWith(cleanLast4)) {
+      const { data: workOrder, error: orderError } = await supabase
+        .from('workorders')
+        .select('tracking_token')
+        .eq('workshop_id', workshopId)
+        .eq('motorcycle_id', motorcycle.id)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+
+      if (!orderError && workOrder?.tracking_token) {
+        return { success: true, token: workOrder.tracking_token }
+      }
+
+      return { error: 'Tu vehículo está registrado, pero aún no tiene órdenes de trabajo.' }
+    }
   }
 
-  // 3. Buscar la orden de trabajo más reciente para esa moto
-  const { data: workOrder, error: orderError } = await supabase
-    .from('workorders')
-    .select('tracking_token')
-    .eq('motorcycle_id', motorcycle.id)
-    .order('created_at', { ascending: false })
-    .limit(1)
-    .single()
-
-  if (orderError || !workOrder) {
-    return { error: 'No hay órdenes activas para este vehículo.' }
+  return {
+    error: 'No encontramos ninguna orden que coincida con esa placa y los últimos 4 dígitos de tu celular.',
   }
-
-  // 4. Devolver el token para la redirección (la redirección se maneja en el cliente)
-  return { success: true, token: workOrder.tracking_token }
 }

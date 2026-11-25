@@ -63,7 +63,7 @@ export async function middleware(request: NextRequest) {
 
   if (isProtectedRoute && !user) {
     const url = request.nextUrl.clone()
-    url.pathname = '/' // Redirect to landing or login
+    url.pathname = '/login'
     return NextResponse.redirect(url)
   }
 

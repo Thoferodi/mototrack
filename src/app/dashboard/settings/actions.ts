@@ -2,9 +2,6 @@
 
 import { createServerSupabaseClient } from '@/supabase/server'
 import { revalidatePath } from 'next/cache'
-import { Database } from '@/types/database.types'
-
-type WorkshopUpdate = Database['public']['Tables']['workshops']['Update']
 
 export async function updateWorkshopSettings(
   workshopId: string,
@@ -18,22 +15,47 @@ export async function updateWorkshopSettings(
 ) {
   const supabase = createServerSupabaseClient()
 
-  // Verificar sesión y permisos (opcionalmente podrías verificar que el usuario pertenece a este workshop)
-  const { data: { session } } = await supabase.auth.getSession()
-  if (!session) {
-    throw new Error('No autorizado')
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) {
+    return { success: false, error: 'No autorizado' }
   }
+
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('workshop_id')
+    .eq('id', user.id)
+    .single()
+
+  if (!profile || profile.workshop_id !== workshopId) {
+    return { success: false, error: 'No tienes permisos para modificar este taller' }
+  }
+
+  const { data: existingWorkshop } = await supabase
+    .from('workshops')
+    .select('settings')
+    .eq('id', workshopId)
+    .single()
+
+  const existingSettings =
+    existingWorkshop?.settings &&
+    typeof existingWorkshop.settings === 'object' &&
+    !Array.isArray(existingWorkshop.settings)
+      ? (existingWorkshop.settings as Record<string, any>)
+      : {}
 
   const { error } = await supabase
     .from('workshops')
     .update({
-      name: data.name,
-      phone: data.phone,
-      address: data.address,
+      name: data.name.trim(),
+      phone: data.phone.trim(),
+      address: data.address.trim(),
       logo_url: data.logo_url,
       settings: {
-        primary_color: data.primary_color
-      }
+        ...existingSettings,
+        primary_color: data.primary_color,
+      },
     })
     .eq('id', workshopId)
 
@@ -43,7 +65,8 @@ export async function updateWorkshopSettings(
   }
 
   revalidatePath('/', 'layout')
+  revalidatePath('/dashboard', 'layout')
   revalidatePath('/dashboard/settings')
-  
+
   return { success: true }
 }

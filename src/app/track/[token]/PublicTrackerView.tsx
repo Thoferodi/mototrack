@@ -1,0 +1,500 @@
+import Link from 'next/link'
+import { createAdminSupabaseClient } from '@/supabase/admin'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import {
+  Clock,
+  Search,
+  PackageCheck,
+  Wrench,
+  CheckCircle2,
+  Truck,
+  Circle,
+  MapPin,
+  Phone,
+  Lock,
+  ImageIcon,
+  ArrowLeft,
+  MessageSquare,
+} from 'lucide-react'
+import {
+  WORKORDER_STATUS_ORDER,
+  WorkOrderStatus,
+  isValidUUID,
+} from '@/lib/workorder-status'
+import { ItemApprovalButtons } from './ItemApprovalButtons'
+
+const statusConfig: Record<
+  WorkOrderStatus,
+  { label: string; shortLabel: string; icon: any; color: string; description: string }
+> = {
+  received: {
+    label: 'Recibida',
+    shortLabel: 'Recibida',
+    icon: Clock,
+    color: 'bg-slate-100 text-slate-700 border-slate-200',
+    description: 'Hemos recibido tu motocicleta y pronto comenzaremos el diagnóstico.',
+  },
+  diagnosing: {
+    label: 'Diagnosticando',
+    shortLabel: 'Diagnóstico',
+    icon: Search,
+    color: 'bg-blue-100 text-blue-700 border-blue-200',
+    description: 'Nuestros técnicos están revisando a detalle cada punto de tu moto.',
+  },
+  waiting_approval: {
+    label: 'Esperando Aprobación',
+    shortLabel: 'Aprobación',
+    icon: PackageCheck,
+    color: 'bg-yellow-100 text-yellow-700 border-yellow-200',
+    description: 'El presupuesto está listo. Por favor, revisa los ítems y aprueba para continuar.',
+  },
+  in_repair: {
+    label: 'En Reparación',
+    shortLabel: 'Reparación',
+    icon: Wrench,
+    color: 'bg-orange-100 text-orange-700 border-orange-200',
+    description: '¡Manos a la obra! Estamos trabajando en las reparaciones aprobadas.',
+  },
+  quality_check: {
+    label: 'Control de Calidad',
+    shortLabel: 'Calidad',
+    icon: CheckCircle2,
+    color: 'bg-purple-100 text-purple-700 border-purple-200',
+    description: 'Estamos realizando pruebas finales para asegurar que todo esté perfecto.',
+  },
+  ready_for_pickup: {
+    label: 'Lista para Entrega',
+    shortLabel: 'Lista',
+    icon: PackageCheck,
+    color: 'bg-green-100 text-green-700 border-green-200',
+    description: '¡Tu moto está lista! Ya puedes pasar por ella al taller.',
+  },
+  delivered: {
+    label: 'Entregada',
+    shortLabel: 'Entregada',
+    icon: Truck,
+    color: 'bg-emerald-100 text-emerald-700 border-emerald-200',
+    description: 'La orden ha sido finalizada y la moto entregada satisfactoriamente.',
+  },
+}
+
+interface PublicTrackerViewProps {
+  token: string
+  workshopSlug?: string
+}
+
+export async function PublicTrackerView({ token, workshopSlug }: PublicTrackerViewProps) {
+  let order: any = null
+
+  if (isValidUUID(token)) {
+    const supabase = createAdminSupabaseClient()
+    const { data, error } = await supabase
+      .from('workorders')
+      .select(`
+        id,
+        status,
+        tracking_token,
+        mileage,
+        description,
+        total_amount,
+        created_at,
+        updated_at,
+        workshops (id, name, slug, logo_url, address, phone, settings),
+        motorcycles (plate, make, model, year, color),
+        order_items (*),
+        order_timeline_events (*)
+      `)
+      .eq('tracking_token', token)
+      .maybeSingle()
+
+    if (!error && data) {
+      const orderWorkshopSlug = (data.workshops as { slug?: string } | null)?.slug
+      if (!workshopSlug || orderWorkshopSlug === workshopSlug) {
+        order = data
+      }
+    }
+  }
+
+  if (!order) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6 text-center">
+        <Card className="max-w-md w-full border-2">
+          <CardContent className="pt-12 pb-10 space-y-4">
+            <div className="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center mx-auto">
+              <Search className="w-10 h-10 text-slate-400" />
+            </div>
+            <h1 className="text-2xl font-bold text-slate-900">Orden no encontrada</h1>
+            <p className="text-muted-foreground text-sm">
+              El enlace que utilizaste parece ser inválido o la orden ya no está disponible.
+            </p>
+            <Button asChild variant="outline" className="mt-2">
+              <Link href={workshopSlug ? `/t/${workshopSlug}` : '/track'}>
+                <ArrowLeft className="w-4 h-4 mr-2" />
+                Volver al buscador
+              </Link>
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
+  const currentStatus =
+    statusConfig[order.status as WorkOrderStatus] || statusConfig.received
+  const StatusIcon = currentStatus.icon
+  const currentStepIndex = Math.max(
+    0,
+    WORKORDER_STATUS_ORDER.indexOf(order.status as WorkOrderStatus)
+  )
+
+  const timeline =
+    (order.order_timeline_events as any[] | null)?.sort(
+      (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    ) || []
+
+  const items =
+    (order.order_items as any[] | null)?.sort(
+      (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+    ) || []
+
+  const isWaitingApproval = order.status === 'waiting_approval'
+
+  // Siempre excluir ítems rechazados para alinear con workorders.total_amount (Bloque A)
+  const total = items.reduce((acc, item) => {
+    if (item.status === 'rejected') return acc
+    return acc + item.quantity * item.unit_price
+  }, 0)
+
+  const cleanPhone = order.workshops?.phone?.replace(/\D/g, '') || ''
+  const backHref = workshopSlug ? `/t/${workshopSlug}` : '/track'
+
+  return (
+    <div className="min-h-screen bg-slate-50 pb-12">
+      {/* Cabecera del Taller */}
+      <header className="bg-white border-b sticky top-0 z-50">
+        <div className="max-w-2xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3 min-w-0">
+            <Link
+              href={backHref}
+              aria-label="Volver al buscador"
+              className="p-2 -ml-2 rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-900 transition-colors shrink-0"
+            >
+              <ArrowLeft className="w-4 h-4" />
+            </Link>
+            {order.workshops?.logo_url ? (
+              <img
+                src={order.workshops.logo_url}
+                alt={order.workshops.name}
+                className="w-10 h-10 rounded-lg object-contain bg-slate-50 border shrink-0"
+              />
+            ) : (
+              <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center border border-primary/20 shrink-0">
+                <Wrench className="w-5 h-5 text-primary" />
+              </div>
+            )}
+            <div className="min-w-0">
+              <h2 className="font-bold text-slate-900 leading-tight truncate">
+                {order.workshops?.name}
+              </h2>
+              <p className="text-[10px] font-bold text-primary uppercase tracking-tighter flex items-center gap-1 truncate">
+                <MapPin className="w-2.5 h-2.5 shrink-0" />
+                {order.workshops?.address || 'Sucursal Central'}
+              </p>
+            </div>
+          </div>
+          <div className="text-right shrink-0">
+            <Badge
+              variant="outline"
+              className="text-xs font-mono font-bold bg-slate-900 text-white border-slate-900"
+            >
+              {order.motorcycles?.plate}
+            </Badge>
+          </div>
+        </div>
+      </header>
+
+      <main className="max-w-2xl mx-auto px-4 pt-6 space-y-6">
+        {/* Estado Destacado + Pizza Tracker */}
+        <Card className="border-2 overflow-hidden">
+          <div className={`h-2 ${currentStatus.color.split(' ')[0]}`} />
+          <CardContent className="p-6 text-center space-y-5">
+            <div
+              className={`w-16 h-16 rounded-full mx-auto flex items-center justify-center ${currentStatus.color} border-2`}
+            >
+              <StatusIcon className="w-8 h-8" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-black text-slate-900">{currentStatus.label}</h1>
+              <p className="text-slate-600 text-sm mt-1">{currentStatus.description}</p>
+            </div>
+
+            {/* Pizza Tracker Steps */}
+            <div className="pt-2">
+              <div className="grid grid-cols-7 gap-1 items-start">
+                {WORKORDER_STATUS_ORDER.map((stepStatus, idx) => {
+                  const isCompleted = idx < currentStepIndex
+                  const isCurrent = idx === currentStepIndex
+                  const stepCfg = statusConfig[stepStatus]
+                  return (
+                    <div key={stepStatus} className="flex flex-col items-center gap-1">
+                      <div
+                        className={`h-2 w-full rounded-full transition-colors ${
+                          isCurrent
+                            ? 'bg-primary'
+                            : isCompleted
+                              ? 'bg-emerald-500'
+                              : 'bg-slate-200'
+                        }`}
+                      />
+                      <span
+                        className={`text-[9px] leading-tight text-center hidden sm:block ${
+                          isCurrent
+                            ? 'font-black text-slate-900'
+                            : isCompleted
+                              ? 'font-semibold text-emerald-700'
+                              : 'text-slate-400'
+                        }`}
+                      >
+                        {stepCfg.shortLabel}
+                      </span>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Info de la Moto */}
+        <div className="bg-white rounded-xl border-2 p-4 flex items-center justify-between shadow-sm">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 bg-slate-100 rounded-lg flex items-center justify-center">
+              <Wrench className="w-6 h-6 text-slate-500" />
+            </div>
+            <div>
+              <p className="text-[10px] font-bold text-muted-foreground uppercase">Vehículo</p>
+              <h3 className="font-bold text-slate-900">
+                {order.motorcycles?.make} {order.motorcycles?.model}
+              </h3>
+            </div>
+          </div>
+          <div className="text-right">
+            <p className="text-[10px] font-bold text-muted-foreground uppercase">Kilometraje</p>
+            <h3 className="font-bold text-slate-900">
+              {order.mileage != null ? `${order.mileage.toLocaleString('es-CL')} km` : '—'}
+            </h3>
+          </div>
+        </div>
+
+        {/* Presupuesto y Aprobación */}
+        <Card className="border-2 shadow-sm overflow-hidden">
+          <CardHeader className="bg-slate-50/80 border-b py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <CardTitle className="text-lg flex items-center gap-2">
+              <PackageCheck className="w-5 h-5 text-primary" />
+              Presupuesto Detallado
+            </CardTitle>
+            {!isWaitingApproval ? (
+              <Badge
+                variant="secondary"
+                className="gap-1.5 bg-amber-100 text-amber-800 border-amber-200 text-xs py-1 w-fit"
+              >
+                <Lock className="w-3.5 h-3.5" />
+                Presupuesto cerrado - Moto en {currentStatus.label.toLowerCase()}
+              </Badge>
+            ) : (
+              <Badge
+                variant="outline"
+                className="gap-1.5 bg-yellow-50 text-yellow-800 border-yellow-300 text-xs py-1 animate-pulse w-fit"
+              >
+                Acción requerida: Aprueba o rechaza ítems
+              </Badge>
+            )}
+          </CardHeader>
+          <CardContent className="p-0">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-slate-50/50 text-[10px] font-bold text-muted-foreground uppercase border-b">
+                  <tr>
+                    <th className="px-4 py-2 text-left">Concepto</th>
+                    <th className="px-4 py-2 text-right">Cant. x Precio</th>
+                    <th className="px-4 py-2 text-right">Total</th>
+                    <th className="px-4 py-2 text-center">Estado / Acción</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {items.map((item) => (
+                    <tr
+                      key={item.id}
+                      className={item.status === 'rejected' ? 'opacity-50 bg-slate-50/50' : ''}
+                    >
+                      <td className="px-4 py-3">
+                        <div
+                          className={`font-semibold text-slate-800 ${
+                            item.status === 'rejected' ? 'line-through' : ''
+                          }`}
+                        >
+                          {item.description}
+                        </div>
+                        <div className="text-[10px] text-muted-foreground uppercase font-bold">
+                          {item.type === 'labor' ? 'Mano de Obra' : 'Repuesto'}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-right text-slate-600 whitespace-nowrap">
+                        {item.quantity} x ${item.unit_price.toLocaleString('es-CL')}
+                      </td>
+                      <td className="px-4 py-3 text-right font-bold text-slate-900 whitespace-nowrap">
+                        ${(item.quantity * item.unit_price).toLocaleString('es-CL')}
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        <ItemApprovalButtons
+                          trackingToken={token}
+                          itemId={item.id}
+                          currentStatus={item.status || 'pending'}
+                          isLocked={!isWaitingApproval}
+                        />
+                      </td>
+                    </tr>
+                  ))}
+                  {items.length === 0 && (
+                    <tr>
+                      <td colSpan={4} className="px-4 py-8 text-center text-muted-foreground italic">
+                        No se han agregado ítems al presupuesto aún.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+            <div className="bg-slate-900 p-4 flex justify-between items-center text-white">
+              <div>
+                <span className="text-sm font-bold uppercase tracking-wider opacity-80 block">
+                  {isWaitingApproval ? 'Total Activo' : 'Total Aprobado'}
+                </span>
+                <span className="text-[11px] text-slate-400">
+                  Excluye ítems rechazados
+                </span>
+              </div>
+              <span className="text-xl font-black">${total.toLocaleString('es-CL')}</span>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Bitácora / Historial */}
+        <div className="space-y-4">
+          <h3 className="text-lg font-bold text-slate-900 px-1">Historial de Servicio</h3>
+          {timeline.length === 0 ? (
+            <div className="bg-white p-6 rounded-xl border-2 text-center text-sm text-muted-foreground italic">
+              Aún no se han registrado avances en la bitácora.
+            </div>
+          ) : (
+            <div className="relative space-y-6 before:absolute before:left-[19px] before:top-2 before:bottom-2 before:w-0.5 before:bg-slate-200">
+              {timeline.map((event) => {
+                const config = statusConfig[event.status as WorkOrderStatus] || {
+                  label: event.status || 'Actualización',
+                  shortLabel: 'Estado',
+                  icon: Circle,
+                  color: 'bg-slate-100 text-slate-500 border-slate-200',
+                  description: '',
+                }
+                const Icon = config.icon
+                const mediaUrls = Array.isArray(event.media_urls)
+                  ? event.media_urls.filter((url: unknown) => typeof url === 'string' && url.length > 0)
+                  : []
+
+                return (
+                  <div key={event.id} className="relative pl-12">
+                    <div
+                      className={`absolute left-0 top-0 w-10 h-10 rounded-full border-4 border-slate-50 bg-white flex items-center justify-center z-10 shadow-sm ${
+                        config.color.split(' ')[1] || 'text-slate-500'
+                      }`}
+                    >
+                      <Icon className="w-5 h-5" />
+                    </div>
+                    <div className="bg-white p-4 rounded-xl border-2 shadow-sm space-y-2">
+                      <div className="flex justify-between items-center gap-2">
+                        <span className="text-[10px] font-black uppercase text-primary tracking-widest">
+                          {config.label}
+                        </span>
+                        <span className="text-[10px] font-bold text-muted-foreground whitespace-nowrap">
+                          {new Date(event.created_at).toLocaleTimeString('es-ES', {
+                            hour: '2-digit',
+                            minute: '2-digit',
+                          })}
+                          {' · '}
+                          {new Date(event.created_at).toLocaleDateString('es-ES', {
+                            day: '2-digit',
+                            month: 'short',
+                          })}
+                        </span>
+                      </div>
+
+                      {event.description && (
+                        <p className="text-sm text-slate-700 leading-snug whitespace-pre-wrap">
+                          {event.description}
+                        </p>
+                      )}
+
+                      {mediaUrls.length > 0 && (
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 pt-1">
+                          {mediaUrls.map((url: string, idx: number) => (
+                            <a
+                              key={`${event.id}-media-${idx}`}
+                              href={url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="group relative aspect-video rounded-lg border bg-slate-50 overflow-hidden hover:ring-2 hover:ring-primary transition-all"
+                            >
+                              <img
+                                src={url}
+                                alt={`Evidencia ${idx + 1}`}
+                                className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                              />
+                              <span className="absolute bottom-1 right-1 bg-slate-900/75 text-white text-[10px] px-1.5 py-0.5 rounded flex items-center gap-1">
+                                <ImageIcon className="w-2.5 h-2.5" />
+                                Ver
+                              </span>
+                            </a>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* Contacto Taller */}
+        {cleanPhone && (
+          <div className="pt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <a
+              href={`tel:${order.workshops.phone}`}
+              className="flex items-center justify-center gap-2 w-full h-14 bg-white border-2 border-primary text-primary rounded-xl font-bold hover:bg-primary/5 transition-colors"
+            >
+              <Phone className="w-5 h-5" />
+              Llamar al Taller
+            </a>
+            <a
+              href={`https://wa.me/${cleanPhone}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center justify-center gap-2 w-full h-14 bg-emerald-600 text-white rounded-xl font-bold hover:bg-emerald-700 transition-colors"
+            >
+              <MessageSquare className="w-5 h-5" />
+              Escribir por WhatsApp
+            </a>
+          </div>
+        )}
+      </main>
+
+      <footer className="max-w-2xl mx-auto px-6 py-12 text-center text-muted-foreground">
+        <p className="text-[10px] font-bold uppercase tracking-widest">
+          Desarrollado por MotoTrack SaaS
+        </p>
+      </footer>
+    </div>
+  )
+}

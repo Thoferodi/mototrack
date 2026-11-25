@@ -1,78 +1,97 @@
 'use server'
 
-import { createServerSupabaseClient } from '@/supabase/server'
+import { createAdminSupabaseClient } from '@/supabase/admin'
+import { isValidUUID, normalizePlate } from '@/lib/workorder-status'
 
 export async function globalSearchOrder(
   searchQuery: string,
-  last4Phone?: string
-) {
-  const supabase = createServerSupabaseClient()
+  last4Phone?: string,
+  searchType?: 'plate' | 'token'
+): Promise<{ success?: boolean; token?: string; error?: string }> {
   const cleanQuery = searchQuery.trim()
+  if (!cleanQuery) {
+    return { error: 'Ingresa una placa o código de seguimiento.' }
+  }
 
-  // 1. Intentar buscar por Tracking Token (UUID)
-  const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(cleanQuery)
-  
-  if (isUUID) {
+  const supabase = createAdminSupabaseClient()
+
+  // 1. Búsqueda por código de seguimiento (UUID)
+  if (searchType === 'token' || isValidUUID(cleanQuery)) {
+    if (!isValidUUID(cleanQuery)) {
+      return {
+        error: 'El código de seguimiento no es válido. Debe tener el formato UUID enviado por tu taller.',
+      }
+    }
+
     const { data: workOrder, error } = await supabase
       .from('workorders')
       .select('tracking_token')
       .eq('tracking_token', cleanQuery)
-      .single()
+      .maybeSingle()
 
-    if (workOrder) {
+    if (!error && workOrder?.tracking_token) {
       return { success: true, token: workOrder.tracking_token }
+    }
+
+    return {
+      error: 'No se encontró ninguna orden con ese código de seguimiento.',
     }
   }
 
-  // 2. Si no es UUID o no se encontró, buscar por Placa
-  // Para buscar por placa globalmente, necesitamos los últimos 4 dígitos del teléfono por seguridad
-  if (!last4Phone || last4Phone.length !== 4) {
-    return { error: 'Si buscas por placa, debes ingresar los últimos 4 dígitos de tu celular.' }
+  // 2. Búsqueda por placa + últimos 4 dígitos del celular
+  const cleanLast4 = (last4Phone || '').replace(/\D/g, '')
+  if (!/^\d{4}$/.test(cleanLast4)) {
+    return {
+      error: 'Si buscas por placa, debes ingresar los últimos 4 dígitos de tu celular.',
+    }
   }
 
-  // Buscar motos con esa placa
+  const normalizedPlate = normalizePlate(cleanQuery)
+  if (!normalizedPlate) {
+    return { error: 'Ingresa una placa válida.' }
+  }
+
+  const plateVariants = Array.from(
+    new Set([normalizedPlate, cleanQuery.toUpperCase()])
+  )
+
   const { data: motorcycles, error: motoError } = await supabase
     .from('motorcycles')
     .select(`
       id,
+      workshop_id,
       customers (
         phone
       )
     `)
-    .eq('plate', cleanQuery.toUpperCase())
+    .in('plate', plateVariants)
     .order('created_at', { ascending: false })
 
   if (motoError || !motorcycles || motorcycles.length === 0) {
-    return { error: 'No se encontró ninguna orden con esos datos.' }
+    return { error: 'No se encontró ninguna orden con esa placa y teléfono.' }
   }
 
-  // Validar teléfono en las coincidencias (podría haber la misma placa en diferentes talleres, aunque raro)
-  let foundToken: string | null = null
-
   for (const moto of motorcycles) {
-    const customerPhone = (moto.customers as any)?.phone || ''
+    const customerPhone = (moto.customers as { phone?: string | null } | null)?.phone || ''
     const cleanedPhone = customerPhone.replace(/\D/g, '')
-    
-    if (cleanedPhone.endsWith(last4Phone)) {
-      // Buscar la orden más reciente para esta moto
+
+    if (cleanedPhone.endsWith(cleanLast4)) {
       const { data: workOrder } = await supabase
         .from('workorders')
         .select('tracking_token')
         .eq('motorcycle_id', moto.id)
+        .eq('workshop_id', moto.workshop_id)
         .order('created_at', { ascending: false })
         .limit(1)
-        .single()
+        .maybeSingle()
 
-      if (workOrder) {
-        foundToken = workOrder.tracking_token
-        break
+      if (workOrder?.tracking_token) {
+        return { success: true, token: workOrder.tracking_token }
       }
     }
   }
 
-  if (foundToken) {
-    return { success: true, token: foundToken }
+  return {
+    error: 'No encontramos ninguna orden que coincida con esa placa y los últimos 4 dígitos de tu celular.',
   }
-
-  return { error: 'No se encontró ninguna orden que coincida con los datos proporcionados.' }
 }

@@ -49,3 +49,9 @@ export async function signIn(formData: FormData) {
 
   return { error: 'Rol no reconocido' }
 }
+
+export async function signOut() {
+  const supabase = createServerSupabaseClient()
+  await supabase.auth.signOut()
+  redirect('/login')
+}

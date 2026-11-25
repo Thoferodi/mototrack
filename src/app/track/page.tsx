@@ -3,7 +3,7 @@
 import * as React from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Search, Loader2, Bike, Phone, Hash, ArrowLeft } from 'lucide-react'
+import { Search, Loader2, Bike, Phone, Hash, ArrowLeft, AlertCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -15,26 +15,60 @@ export default function GlobalTrackPage() {
   const [isSubmitting, setIsSubmitting] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
   const [searchType, setSearchType] = React.useState<'plate' | 'token'>('plate')
+  const [query, setQuery] = React.useState('')
+  const [last4, setLast4] = React.useState('')
+
+  const handleTabChange = (nextType: 'plate' | 'token') => {
+    setSearchType(nextType)
+    setError(null)
+    setQuery('')
+    if (nextType === 'token') {
+      setLast4('')
+    }
+  }
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
+    if (isSubmitting) return
+
+    const cleanQuery =
+      searchType === 'plate'
+        ? query.replace(/\s+/g, '').toUpperCase()
+        : query.trim()
+    const cleanLast4 = last4.replace(/\D/g, '')
+
+    if (!cleanQuery) {
+      setError(
+        searchType === 'plate'
+          ? 'Ingresa la placa de tu motocicleta.'
+          : 'Ingresa el código de seguimiento.'
+      )
+      return
+    }
+
+    if (searchType === 'plate' && !/^\d{4}$/.test(cleanLast4)) {
+      setError('Ingresa los últimos 4 dígitos numéricos de tu celular.')
+      return
+    }
+
     setIsSubmitting(true)
     setError(null)
 
-    const formData = new FormData(e.currentTarget)
-    const query = formData.get('query') as string
-    const last4 = formData.get('last4') as string
-
     try {
-      const result = await globalSearchOrder(query, searchType === 'plate' ? last4 : undefined)
-      
+      const result = await globalSearchOrder(
+        cleanQuery,
+        searchType === 'plate' ? cleanLast4 : undefined,
+        searchType
+      )
+
       if (result.success && result.token) {
         router.push(`/track/${result.token}`)
-      } else {
-        setError(result.error || 'No se encontró la orden.')
+        return
       }
+
+      setError(result.error || 'No se encontró ninguna orden con los datos ingresados.')
     } catch (err) {
-      setError('Ocurrió un error inesperado.')
+      setError('Ocurrió un error de conexión al consultar tu orden. Intenta nuevamente.')
     } finally {
       setIsSubmitting(false)
     }
@@ -73,20 +107,24 @@ export default function GlobalTrackPage() {
           <CardHeader>
             <div className="flex gap-2 p-1 bg-slate-100 rounded-lg mb-4">
               <button
-                onClick={() => setSearchType('plate')}
+                type="button"
+                disabled={isSubmitting}
+                onClick={() => handleTabChange('plate')}
                 className={`flex-1 py-2 text-sm font-medium rounded-md transition-all ${
-                  searchType === 'plate' 
-                    ? 'bg-white text-orange-600 shadow-sm' 
+                  searchType === 'plate'
+                    ? 'bg-white text-orange-600 shadow-sm'
                     : 'text-slate-500 hover:text-slate-700'
                 }`}
               >
                 Por Placa
               </button>
               <button
-                onClick={() => setSearchType('token')}
+                type="button"
+                disabled={isSubmitting}
+                onClick={() => handleTabChange('token')}
                 className={`flex-1 py-2 text-sm font-medium rounded-md transition-all ${
-                  searchType === 'token' 
-                    ? 'bg-white text-orange-600 shadow-sm' 
+                  searchType === 'token'
+                    ? 'bg-white text-orange-600 shadow-sm'
                     : 'text-slate-500 hover:text-slate-700'
                 }`}
               >
@@ -98,8 +136,8 @@ export default function GlobalTrackPage() {
               {searchType === 'plate' ? 'Buscar por Placa' : 'Buscar por Código'}
             </CardTitle>
             <CardDescription>
-              {searchType === 'plate' 
-                ? 'Ingresa la placa de tu moto y valida tu identidad.' 
+              {searchType === 'plate'
+                ? 'Ingresa la placa de tu moto y valida tu identidad.'
                 : 'Ingresa el código de seguimiento enviado por WhatsApp.'}
             </CardDescription>
           </CardHeader>
@@ -118,8 +156,21 @@ export default function GlobalTrackPage() {
                   <Input
                     id="query"
                     name="query"
-                    placeholder={searchType === 'plate' ? 'ABC-123' : 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx'}
-                    className={`pl-9 ${searchType === 'plate' ? 'uppercase' : ''}`}
+                    value={query}
+                    onChange={(e) =>
+                      setQuery(
+                        searchType === 'plate'
+                          ? e.target.value.replace(/\s+/g, '').toUpperCase()
+                          : e.target.value
+                      )
+                    }
+                    placeholder={
+                      searchType === 'plate' ? 'ABC-123' : 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx'
+                    }
+                    disabled={isSubmitting}
+                    autoCapitalize={searchType === 'plate' ? 'characters' : 'none'}
+                    autoComplete="off"
+                    className={`pl-9 font-mono ${searchType === 'plate' ? 'uppercase' : ''}`}
                     required
                   />
                 </div>
@@ -133,30 +184,43 @@ export default function GlobalTrackPage() {
                     <Input
                       id="last4"
                       name="last4"
+                      value={last4}
+                      onChange={(e) => setLast4(e.target.value.replace(/\D/g, '').slice(0, 4))}
                       placeholder="4567"
+                      inputMode="numeric"
                       maxLength={4}
                       pattern="\d{4}"
-                      className="pl-9"
+                      disabled={isSubmitting}
+                      className="pl-9 font-mono"
                       required
                     />
                   </div>
-                  <p className="text-[10px] text-slate-400">Por seguridad, validamos tu identidad con tu teléfono.</p>
+                  <p className="text-[11px] text-slate-500">
+                    Por seguridad, validamos tu identidad con tu teléfono.
+                  </p>
                 </div>
               )}
 
               {error && (
-                <p className="text-sm font-medium text-destructive bg-destructive/10 p-3 rounded-lg border border-destructive/20">
-                  {error}
-                </p>
+                <div
+                  role="alert"
+                  className="flex items-start gap-2 text-sm font-medium text-destructive bg-destructive/10 p-3 rounded-lg border border-destructive/20"
+                >
+                  <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                  <span>{error}</span>
+                </div>
               )}
 
-              <Button 
-                type="submit" 
-                disabled={isSubmitting} 
-                className="w-full h-12 text-lg font-semibold bg-orange-600 hover:bg-orange-700 text-white"
+              <Button
+                type="submit"
+                disabled={isSubmitting}
+                className="w-full h-12 text-base font-semibold bg-orange-600 hover:bg-orange-700 text-white"
               >
                 {isSubmitting ? (
-                  <Loader2 className="w-5 h-5 animate-spin" />
+                  <span className="flex items-center gap-2">
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                    Consultando estado...
+                  </span>
                 ) : (
                   'Consultar Estado'
                 )}

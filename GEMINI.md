@@ -42,7 +42,12 @@ Plataforma B2B Multi-Tenant (Multi-Inquilino) optimizada para talleres de motoci
 - **Calidad de Código:** Resolución integral de errores de sintaxis JSX y tipado estricto (`tsc --noEmit` y `next build` validados con éxito).
 - **Despliegue:** Aplicación activa en producción vía Vercel.
 - **Frontend:** Rediseño completo de la Landing Page principal (`src/app/page.tsx`).
+- **Auditoría QA Bloque A (Auth y Dashboard):** Revisión y corrección de autenticación (`getUser()`), aislamiento multi-tenant por `workshop_id`, flujo de órdenes, presupuesto (`total_amount` excluyendo ítems rechazados), catálogo, vehículos y configuración.
+- **Auditoría QA Bloque B (Modo Mecánico, Buscador Público y Portal del Cliente):**
+  - **Modo Mecánico (`src/app/mechanic/**`):** Validación estricta con `getUser()` y `workshop_id`, botón táctil (`h-14`) de Cerrar Sesión y navegación de retorno, compresión real a WebP con `browser-image-compression` y subida vía `FormData` al bucket `evidences`, actualización de `workorders.updated_at`, etiquetas en español en el timeline, manejo de carga/error sin `useTransition` asíncrono roto ni `alert()`, y revalidación cruzada de rutas.
+  - **Buscador Público (`src/app/track` y `src/app/t/[workshopSlug]`):** Soporte para consultas sin sesión mediante `createAdminSupabaseClient()` (`SUPABASE_SERVICE_ROLE_KEY` con fallback seguro), normalización de placa (mayúsculas y sin espacios), validación de últimos 4 dígitos del teléfono o UUID, estados de carga y errores claros.
+  - **Portal del Cliente (`src/app/track/[token]` y `src/app/t/[workshopSlug]/track/[token]`):** Implementación unificada (`PublicTrackerView`), persistencia de aprobación/rechazo de ítems con recálculo de `workorders.total_amount` excluyendo rechazados, renderizado de evidencias fotográficas (`media_urls`) y etiquetas en español en el historial, estados de carga/error visibles y revalidación de rutas afectadas.
 
 ### Fase Actual
-- **Auditoría Funcional QA:** Revisión profunda de flujos (menú por menú, rutas, botones y Server Actions).
-- **Optimización:** Configuración pendiente de Vercel Cron para tareas de mantenimiento.
+- **Cierre Auditoría QA (Bloques A y B completados):** Flujos principales de autenticación, dashboard, modo mecánico, buscador público y portal del cliente validados con `npx tsc --noEmit` y `npm run build`.
+- **Optimización y Despliegue:** Verificar `SUPABASE_SERVICE_ROLE_KEY` en variables de entorno de producción (Vercel) para acceso público bajo RLS estricto y configurar Vercel Cron (`/api/cron/cleanup-media`) para limpieza automática >90 días.
