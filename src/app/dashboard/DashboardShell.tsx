@@ -34,6 +34,7 @@ interface DashboardShellProps {
 }
 
 const ROLE_LABELS: Record<string, string> = {
+  admin: 'Administrador',
   owner: 'Propietario',
   manager: 'Administrador',
   receptionist: 'Recepción',

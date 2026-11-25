@@ -26,31 +26,40 @@ import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Database } from '@/types/database.types'
+import { getWorkOrderStatusLabel } from '@/lib/workorder-status'
 import { createVehicle, updateVehicle, deleteVehicle } from './actions'
 
+type OrderItemSummary = Pick<
+  Database['public']['Tables']['order_items']['Row'],
+  'quantity' | 'unit_price' | 'approved'
+>
+
+type WorkOrderSummary = Pick<
+  Database['public']['Tables']['work_orders']['Row'],
+  'id' | 'order_number' | 'status' | 'mileage_in' | 'customer_notes' | 'created_at'
+> & {
+  order_items?: OrderItemSummary[]
+}
+
 export type VehicleWithHistory = Database['public']['Tables']['motorcycles']['Row'] & {
-  customers: Pick<Database['public']['Tables']['customers']['Row'], 'id' | 'full_name' | 'phone'> | null
-  workorders: Array<
-    Pick<
-      Database['public']['Tables']['workorders']['Row'],
-      'id' | 'status' | 'mileage' | 'description' | 'total_amount' | 'created_at'
-    >
-  >
+  customers: Pick<
+    Database['public']['Tables']['customers']['Row'],
+    'id' | 'full_name' | 'phone_whatsapp'
+  > | null
+  work_orders: WorkOrderSummary[]
 }
 
 export type CustomerOption = Pick<
   Database['public']['Tables']['customers']['Row'],
-  'id' | 'full_name' | 'phone'
+  'id' | 'full_name' | 'phone_whatsapp'
 >
 
-const STATUS_LABELS: Record<string, string> = {
-  received: 'Recibida',
-  diagnosing: 'Diagnosticando',
-  waiting_approval: 'Esperando Aprobación',
-  in_repair: 'En Reparación',
-  quality_check: 'Control de Calidad',
-  ready_for_pickup: 'Lista para Entrega',
-  delivered: 'Entregada',
+function calcOrderTotal(items?: OrderItemSummary[]): number {
+  if (!items || items.length === 0) return 0
+  return items.reduce((acc, item) => {
+    if (item.approved === false) return acc
+    return acc + Number(item.quantity ?? 1) * Number(item.unit_price ?? 0)
+  }, 0)
 }
 
 export function VehiclesManager({
@@ -67,13 +76,10 @@ export function VehiclesManager({
   const [isFormOpen, setIsFormOpen] = React.useState(false)
   const [editingVehicle, setEditingVehicle] = React.useState<VehicleWithHistory | null>(null)
 
-  const [plate, setPlate] = React.useState('')
-  const [make, setMake] = React.useState('')
+  const [licensePlate, setLicensePlate] = React.useState('')
+  const [brand, setBrand] = React.useState('')
   const [model, setModel] = React.useState('')
   const [year, setYear] = React.useState('')
-  const [color, setColor] = React.useState('')
-  const [vin, setVin] = React.useState('')
-  const [engineNumber, setEngineNumber] = React.useState('')
   const [customerMode, setCustomerMode] = React.useState<'existing' | 'new'>('new')
   const [selectedCustomerId, setSelectedCustomerId] = React.useState('')
   const [customerName, setCustomerName] = React.useState('')
@@ -87,13 +93,10 @@ export function VehiclesManager({
 
   const openCreateForm = () => {
     setEditingVehicle(null)
-    setPlate('')
-    setMake('')
+    setLicensePlate('')
+    setBrand('')
     setModel('')
     setYear('')
-    setColor('')
-    setVin('')
-    setEngineNumber('')
     setCustomerMode(customers.length > 0 ? 'existing' : 'new')
     setSelectedCustomerId(customers[0]?.id || '')
     setCustomerName('')
@@ -105,17 +108,14 @@ export function VehiclesManager({
 
   const openEditForm = (v: VehicleWithHistory) => {
     setEditingVehicle(v)
-    setPlate(v.plate)
-    setMake(v.make)
+    setLicensePlate(v.license_plate)
+    setBrand(v.brand)
     setModel(v.model)
     setYear(v.year ? String(v.year) : '')
-    setColor(v.color || '')
-    setVin(v.vin || '')
-    setEngineNumber(v.engine_number || '')
     setCustomerMode('existing')
     setSelectedCustomerId(v.customer_id)
     setCustomerName(v.customers?.full_name || '')
-    setCustomerPhone(v.customers?.phone || '')
+    setCustomerPhone(v.customers?.phone_whatsapp || '')
     setError(null)
     setSuccess(null)
     setIsFormOpen(true)
@@ -135,13 +135,10 @@ export function VehiclesManager({
 
     try {
       const payload = {
-        plate: plate.trim().toUpperCase(),
-        make: make.trim(),
+        license_plate: licensePlate.replace(/\s+/g, '').toUpperCase(),
+        brand: brand.trim(),
         model: model.trim(),
         year: year ? Number(year) : undefined,
-        color: color.trim(),
-        vin: vin.trim(),
-        engine_number: engineNumber.trim(),
         customer_id:
           editingVehicle || customerMode === 'existing' ? selectedCustomerId : undefined,
         customer_name:
@@ -196,11 +193,11 @@ export function VehiclesManager({
     const q = search.trim().toLowerCase()
     if (!q) return true
     return (
-      v.plate.toLowerCase().includes(q) ||
-      v.make.toLowerCase().includes(q) ||
+      v.license_plate.toLowerCase().includes(q) ||
+      v.brand.toLowerCase().includes(q) ||
       v.model.toLowerCase().includes(q) ||
       (v.customers?.full_name || '').toLowerCase().includes(q) ||
-      (v.customers?.phone || '').toLowerCase().includes(q)
+      (v.customers?.phone_whatsapp || '').toLowerCase().includes(q)
     )
   })
 
@@ -238,7 +235,9 @@ export function VehiclesManager({
           <CardHeader className="flex flex-row items-center justify-between pb-3">
             <div>
               <CardTitle className="text-lg">
-                {editingVehicle ? `Editar Moto (${editingVehicle.plate})` : 'Registrar Nueva Motocicleta'}
+                {editingVehicle
+                  ? `Editar Moto (${editingVehicle.license_plate})`
+                  : 'Registrar Nueva Motocicleta'}
               </CardTitle>
               <CardDescription>
                 Completa los datos técnicos del vehículo y asócialo a un propietario.
@@ -255,20 +254,20 @@ export function VehiclesManager({
                   <Label htmlFor="v-plate">Placa *</Label>
                   <Input
                     id="v-plate"
-                    value={plate}
-                    onChange={(e) => setPlate(e.target.value)}
-                    placeholder="ABC-123"
+                    value={licensePlate}
+                    onChange={(e) => setLicensePlate(e.target.value)}
+                    placeholder="ABC123"
                     className="uppercase"
                     required
                     disabled={isSaving}
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="v-make">Marca *</Label>
+                  <Label htmlFor="v-brand">Marca *</Label>
                   <Input
-                    id="v-make"
-                    value={make}
-                    onChange={(e) => setMake(e.target.value)}
+                    id="v-brand"
+                    value={brand}
+                    onChange={(e) => setBrand(e.target.value)}
                     placeholder="Yamaha"
                     required
                     disabled={isSaving}
@@ -293,37 +292,6 @@ export function VehiclesManager({
                     value={year}
                     onChange={(e) => setYear(e.target.value)}
                     placeholder="2023"
-                    disabled={isSaving}
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="v-color">Color</Label>
-                  <Input
-                    id="v-color"
-                    value={color}
-                    onChange={(e) => setColor(e.target.value)}
-                    placeholder="Negro Mate"
-                    disabled={isSaving}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="v-vin">VIN / Chasis</Label>
-                  <Input
-                    id="v-vin"
-                    value={vin}
-                    onChange={(e) => setVin(e.target.value)}
-                    disabled={isSaving}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="v-engine">N° de Motor</Label>
-                  <Input
-                    id="v-engine"
-                    value={engineNumber}
-                    onChange={(e) => setEngineNumber(e.target.value)}
                     disabled={isSaving}
                   />
                 </div>
@@ -367,7 +335,7 @@ export function VehiclesManager({
                   >
                     {customers.map((c) => (
                       <option key={c.id} value={c.id}>
-                        {c.full_name} {c.phone ? `(${c.phone})` : ''}
+                        {c.full_name} {c.phone_whatsapp ? `(${c.phone_whatsapp})` : ''}
                       </option>
                     ))}
                   </select>
@@ -384,12 +352,13 @@ export function VehiclesManager({
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="c-phone">WhatsApp / Teléfono</Label>
+                      <Label htmlFor="c-phone">WhatsApp / Teléfono *</Label>
                       <Input
                         id="c-phone"
                         value={customerPhone}
                         onChange={(e) => setCustomerPhone(e.target.value)}
                         placeholder="+57 300 000 0000"
+                        required
                         disabled={isSaving}
                       />
                     </div>
@@ -430,8 +399,9 @@ export function VehiclesManager({
       <div className="grid grid-cols-1 gap-4">
         {filteredVehicles.map((v) => {
           const isExpanded = expandedId === v.id
-          const sortedOrders = [...(v.workorders || [])].sort(
-            (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+          const sortedOrders = [...(v.work_orders || [])].sort(
+            (a, b) =>
+              new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime()
           )
           const isRowDeleting = deletingId === v.id
 
@@ -445,25 +415,20 @@ export function VehiclesManager({
                     </div>
                     <div className="space-y-1">
                       <div className="flex flex-wrap items-center gap-2">
-                        <Badge className="font-mono text-sm tracking-wider">{v.plate}</Badge>
+                        <Badge className="font-mono text-sm tracking-wider">{v.license_plate}</Badge>
                         <h3 className="font-bold text-slate-900 text-lg">
-                          {v.make} {v.model} {v.year ? `(${v.year})` : ''}
+                          {v.brand} {v.model} {v.year ? `(${v.year})` : ''}
                         </h3>
-                        {v.color && (
-                          <Badge variant="outline" className="text-xs">
-                            {v.color}
-                          </Badge>
-                        )}
                       </div>
                       <div className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground">
                         <span className="flex items-center gap-1">
                           <User className="w-3.5 h-3.5" />
                           {v.customers?.full_name || 'Sin propietario'}
                         </span>
-                        {v.customers?.phone && (
+                        {v.customers?.phone_whatsapp && (
                           <span className="flex items-center gap-1">
                             <Phone className="w-3.5 h-3.5" />
-                            {v.customers.phone}
+                            {v.customers.phone_whatsapp}
                           </span>
                         )}
                         <span className="flex items-center gap-1 font-semibold text-slate-700">
@@ -543,11 +508,6 @@ export function VehiclesManager({
                       <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500">
                         Historial Clínico de Órdenes
                       </h4>
-                      {(v.vin || v.engine_number) && (
-                        <span className="text-xs text-slate-400 font-mono">
-                          {v.vin ? `VIN: ${v.vin}` : ''} {v.engine_number ? `Motor: ${v.engine_number}` : ''}
-                        </span>
-                      )}
                     </div>
 
                     {sortedOrders.length === 0 ? (
@@ -556,42 +516,49 @@ export function VehiclesManager({
                       </p>
                     ) : (
                       <div className="divide-y divide-slate-100 rounded-lg border bg-slate-50/50">
-                        {sortedOrders.map((ord) => (
-                          <div
-                            key={ord.id}
-                            className="p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-sm"
-                          >
-                            <div className="space-y-0.5">
-                              <div className="flex items-center gap-2">
-                                <span className="font-mono font-bold text-slate-700">
-                                  #{ord.id.slice(0, 8)}
-                                </span>
-                                <Badge variant="outline" className="text-[10px]">
-                                  {STATUS_LABELS[ord.status] || ord.status}
-                                </Badge>
-                                <span className="text-xs text-muted-foreground">
-                                  {new Date(ord.created_at).toLocaleDateString('es-ES')}
-                                </span>
+                        {sortedOrders.map((ord) => {
+                          const orderTotal = calcOrderTotal(ord.order_items)
+                          return (
+                            <div
+                              key={ord.id}
+                              className="p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-sm"
+                            >
+                              <div className="space-y-0.5">
+                                <div className="flex items-center gap-2">
+                                  <span className="font-mono font-bold text-slate-700">
+                                    #{ord.order_number ?? ord.id.slice(0, 8)}
+                                  </span>
+                                  <Badge variant="outline" className="text-[10px]">
+                                    {getWorkOrderStatusLabel(ord.status)}
+                                  </Badge>
+                                  {ord.created_at && (
+                                    <span className="text-xs text-muted-foreground">
+                                      {new Date(ord.created_at).toLocaleDateString('es-ES')}
+                                    </span>
+                                  )}
+                                </div>
+                                {ord.customer_notes && (
+                                  <p className="text-xs text-slate-600 line-clamp-1">
+                                    {ord.customer_notes}
+                                  </p>
+                                )}
                               </div>
-                              {ord.description && (
-                                <p className="text-xs text-slate-600 line-clamp-1">{ord.description}</p>
-                              )}
+                              <div className="flex items-center gap-3">
+                                <span className="text-xs text-slate-500">
+                                  {ord.mileage_in?.toLocaleString() ?? 0} km
+                                </span>
+                                <span className="font-bold text-slate-900">
+                                  ${orderTotal.toLocaleString('es-CL')}
+                                </span>
+                                <Button asChild variant="outline" size="sm" className="h-7 text-xs gap-1">
+                                  <Link href={`/dashboard/orders/${ord.id}`}>
+                                    Ver <ExternalLink className="w-3 h-3" />
+                                  </Link>
+                                </Button>
+                              </div>
                             </div>
-                            <div className="flex items-center gap-3">
-                              <span className="text-xs text-slate-500">
-                                {ord.mileage?.toLocaleString() ?? 0} km
-                              </span>
-                              <span className="font-bold text-slate-900">
-                                ${(ord.total_amount || 0).toLocaleString('es-CL')}
-                              </span>
-                              <Button asChild variant="outline" size="sm" className="h-7 text-xs gap-1">
-                                <Link href={`/dashboard/orders/${ord.id}`}>
-                                  Ver <ExternalLink className="w-3 h-3" />
-                                </Link>
-                              </Button>
-                            </div>
-                          </div>
-                        ))}
+                          )
+                        })}
                       </div>
                     )}
                   </div>

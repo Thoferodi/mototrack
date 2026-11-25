@@ -3,7 +3,7 @@ import { notFound, redirect } from 'next/navigation'
 import { ChevronLeft, Wrench, User, Calendar, ImageIcon } from 'lucide-react'
 import { createServerSupabaseClient } from '@/supabase/server'
 import { Badge } from '@/components/ui/badge'
-import { getWorkOrderStatusLabel } from '@/lib/workorder-status'
+import { getWorkOrderStatusLabel, parseMediaUrls } from '@/lib/workorder-status'
 import { MechanicSignOutButton } from '../../sign-out-button'
 import { StatusControls } from './status-controls'
 import { EvidenceCapture } from './evidence-capture'
@@ -37,11 +37,13 @@ export default async function MechanicOrderDetailPage({ params }: PageProps) {
   }
 
   const { data: order, error } = await supabase
-    .from('workorders')
+    .from('work_orders')
     .select(`
       *,
-      motorcycles (*),
-      customers (*),
+      motorcycles (
+        *,
+        customers (*)
+      ),
       order_timeline_events (*)
     `)
     .eq('id', params.id)
@@ -53,9 +55,12 @@ export default async function MechanicOrderDetailPage({ params }: PageProps) {
   }
 
   const timeline =
-    (order.order_timeline_events as any[] | null)?.sort(
-      (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    order.order_timeline_events?.sort(
+      (a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime()
     ) || []
+
+  const motorcycle = order.motorcycles
+  const customer = motorcycle?.customers
 
   return (
     <div className="min-h-screen bg-slate-900 text-white pb-16">
@@ -75,10 +80,10 @@ export default async function MechanicOrderDetailPage({ params }: PageProps) {
 
           <div className="text-center min-w-0 px-1">
             <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest leading-none mb-1">
-              Orden #{order.id.slice(0, 8)}
+              Orden #{order.order_number ?? order.id.slice(0, 8)}
             </p>
             <h2 className="text-xl sm:text-2xl font-black font-mono tracking-tighter leading-none truncate">
-              {order.motorcycles?.plate}
+              {motorcycle?.license_plate || 'SIN-PLACA'}
             </h2>
           </div>
 
@@ -100,28 +105,28 @@ export default async function MechanicOrderDetailPage({ params }: PageProps) {
             </div>
             <div className="min-w-0">
               <h3 className="font-black text-xl leading-tight truncate">
-                {order.motorcycles?.make}
+                {motorcycle?.brand}
               </h3>
               <p className="text-sm font-bold text-slate-400 truncate">
-                {order.motorcycles?.model}
+                {motorcycle?.model}
               </p>
             </div>
           </div>
           <div className="text-right shrink-0">
             <p className="text-[10px] font-black uppercase text-slate-500 tracking-widest">KMS</p>
             <p className="text-lg font-black text-white leading-tight">
-              {order.mileage != null ? order.mileage.toLocaleString('es-CL') : '—'}
+              {order.mileage_in != null ? order.mileage_in.toLocaleString('es-CL') : '—'}
             </p>
           </div>
         </section>
 
         {/* Notas de Ingreso */}
-        {order.description && (
+        {order.customer_notes && (
           <section className="bg-slate-800/60 rounded-2xl p-4 border border-slate-700 space-y-1">
             <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">
               Notas de Recepción
             </p>
-            <p className="text-sm text-slate-200 whitespace-pre-wrap">{order.description}</p>
+            <p className="text-sm text-slate-200 whitespace-pre-wrap">{order.customer_notes}</p>
           </section>
         )}
 
@@ -133,7 +138,7 @@ export default async function MechanicOrderDetailPage({ params }: PageProps) {
               Actualizar Estado
             </h4>
           </div>
-          <StatusControls orderId={order.id} currentStatus={order.status} />
+          <StatusControls orderId={order.id} currentStatus={order.status || 'received'} />
         </section>
 
         {/* Sección de Captura de Evidencia */}
@@ -162,9 +167,7 @@ export default async function MechanicOrderDetailPage({ params }: PageProps) {
           ) : (
             <div className="space-y-3">
               {timeline.map((event) => {
-                const mediaUrls = Array.isArray(event.media_urls)
-                  ? event.media_urls.filter((u: unknown) => typeof u === 'string' && u.length > 0)
-                  : []
+                const mediaUrls = parseMediaUrls(event.media_urls)
                 return (
                   <div
                     key={event.id}
@@ -175,20 +178,22 @@ export default async function MechanicOrderDetailPage({ params }: PageProps) {
                         variant="outline"
                         className="border-primary/40 text-primary text-[10px] font-black uppercase"
                       >
-                        {getWorkOrderStatusLabel(event.status)}
+                        {getWorkOrderStatusLabel(event.status_snapshot)}
                       </Badge>
-                      <span className="text-[11px] font-semibold text-slate-400">
-                        {new Date(event.created_at).toLocaleString('es-ES', {
-                          day: '2-digit',
-                          month: 'short',
-                          hour: '2-digit',
-                          minute: '2-digit',
-                        })}
-                      </span>
+                      {event.created_at && (
+                        <span className="text-[11px] font-semibold text-slate-400">
+                          {new Date(event.created_at).toLocaleString('es-ES', {
+                            day: '2-digit',
+                            month: 'short',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                          })}
+                        </span>
+                      )}
                     </div>
-                    {event.description && (
+                    {event.public_comment && (
                       <p className="text-sm text-slate-200 whitespace-pre-wrap">
-                        {event.description}
+                        {event.public_comment}
                       </p>
                     )}
                     {mediaUrls.length > 0 && (
@@ -230,25 +235,27 @@ export default async function MechanicOrderDetailPage({ params }: PageProps) {
                 Cliente
               </p>
               <p className="font-bold text-slate-200">
-                {order.customers?.full_name || 'Sin nombre'}
+                {customer?.full_name || 'Sin nombre'}
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-3 bg-slate-800/50 p-4 rounded-2xl border border-slate-700">
-            <Calendar className="w-5 h-5 text-slate-400 shrink-0" />
-            <div>
-              <p className="text-[10px] font-black uppercase text-slate-500 tracking-widest">
-                Ingreso
-              </p>
-              <p className="font-bold text-slate-200">
-                {new Date(order.created_at).toLocaleDateString('es-ES', {
-                  day: '2-digit',
-                  month: 'long',
-                  year: 'numeric',
-                })}
-              </p>
+          {order.created_at && (
+            <div className="flex items-center gap-3 bg-slate-800/50 p-4 rounded-2xl border border-slate-700">
+              <Calendar className="w-5 h-5 text-slate-400 shrink-0" />
+              <div>
+                <p className="text-[10px] font-black uppercase text-slate-500 tracking-widest">
+                  Ingreso
+                </p>
+                <p className="font-bold text-slate-200">
+                  {new Date(order.created_at).toLocaleDateString('es-ES', {
+                    day: '2-digit',
+                    month: 'long',
+                    year: 'numeric',
+                  })}
+                </p>
+              </div>
             </div>
-          </div>
+          )}
         </section>
       </main>
     </div>

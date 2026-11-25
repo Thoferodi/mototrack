@@ -38,12 +38,17 @@ export async function signIn(formData: FormData) {
     return { error: 'No se encontró un perfil asociado a esta cuenta' }
   }
 
-  const role: UserRole = profile.role
+  const role = String(profile.role)
 
-  // Ruteo inteligente por rol
+  // Ruteo inteligente por rol (soporta admin/owner/manager/receptionist/mechanic)
   if (role === 'mechanic') {
     redirect('/mechanic')
-  } else if (role === 'owner' || role === 'manager' || role === 'receptionist') {
+  } else if (
+    role === 'admin' ||
+    role === 'owner' ||
+    role === 'manager' ||
+    role === 'receptionist'
+  ) {
     redirect('/dashboard/orders')
   }
 

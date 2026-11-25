@@ -18,7 +18,7 @@ export default async function VehiclesHistoryPage() {
     .eq('id', user.id)
     .single()
 
-  if (!profile) {
+  if (!profile || !profile.workshop_id) {
     redirect('/login')
   }
 
@@ -26,15 +26,29 @@ export default async function VehiclesHistoryPage() {
     supabase
       .from('motorcycles')
       .select(`
-        *,
-        customers (id, full_name, phone),
-        workorders (id, status, mileage, description, total_amount, created_at)
+        id,
+        workshop_id,
+        customer_id,
+        license_plate,
+        brand,
+        model,
+        year,
+        customers (id, full_name, phone_whatsapp),
+        work_orders (
+          id,
+          order_number,
+          status,
+          mileage_in,
+          customer_notes,
+          created_at,
+          order_items (quantity, unit_price, approved)
+        )
       `)
       .eq('workshop_id', profile.workshop_id)
-      .order('created_at', { ascending: false }),
+      .order('license_plate', { ascending: true }),
     supabase
       .from('customers')
-      .select('id, full_name, phone')
+      .select('id, full_name, phone_whatsapp')
       .eq('workshop_id', profile.workshop_id)
       .order('full_name', { ascending: true }),
   ])

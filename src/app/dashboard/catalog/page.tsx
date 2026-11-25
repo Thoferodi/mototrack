@@ -19,15 +19,15 @@ export default async function CatalogPage() {
     .eq('id', user.id)
     .single()
 
-  if (!profile) {
+  if (!profile || !profile.workshop_id) {
     redirect('/login')
   }
 
-  const { data: workshop, error } = await supabase
-    .from('workshops')
-    .select('settings')
-    .eq('id', profile.workshop_id)
-    .single()
+  const { data: orderItems, error } = await supabase
+    .from('order_items')
+    .select('id, description, type, unit_price')
+    .eq('workshop_id', profile.workshop_id)
+    .order('description', { ascending: true })
 
   if (error) {
     console.error('Error fetching catalog:', error)
@@ -40,9 +40,20 @@ export default async function CatalogPage() {
     )
   }
 
-  const catalogItems: CatalogItem[] = Array.isArray((workshop?.settings as any)?.catalog)
-    ? (workshop?.settings as any).catalog
-    : []
+  // Deduplicar ítems históricos por descripción y tipo para mostrarlos como catálogo sugerido
+  const seen = new Set<string>()
+  const catalogItems: CatalogItem[] = []
+  for (const item of orderItems || []) {
+    const key = `${item.type}:${item.description.trim().toLowerCase()}`
+    if (seen.has(key)) continue
+    seen.add(key)
+    catalogItems.push({
+      id: item.id,
+      name: item.description,
+      type: item.type,
+      default_price: Number(item.unit_price ?? 0),
+    })
+  }
 
   return (
     <div className="p-4 md:p-6">

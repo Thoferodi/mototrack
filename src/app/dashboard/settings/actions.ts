@@ -7,7 +7,7 @@ export async function updateWorkshopSettings(
   workshopId: string,
   data: {
     name: string
-    phone: string
+    phone_whatsapp: string
     address: string
     logo_url: string | null
     primary_color: string
@@ -32,30 +32,14 @@ export async function updateWorkshopSettings(
     return { success: false, error: 'No tienes permisos para modificar este taller' }
   }
 
-  const { data: existingWorkshop } = await supabase
-    .from('workshops')
-    .select('settings')
-    .eq('id', workshopId)
-    .single()
-
-  const existingSettings =
-    existingWorkshop?.settings &&
-    typeof existingWorkshop.settings === 'object' &&
-    !Array.isArray(existingWorkshop.settings)
-      ? (existingWorkshop.settings as Record<string, any>)
-      : {}
-
   const { error } = await supabase
     .from('workshops')
     .update({
       name: data.name.trim(),
-      phone: data.phone.trim(),
-      address: data.address.trim(),
+      phone_whatsapp: data.phone_whatsapp.trim() || null,
+      address: data.address.trim() || null,
       logo_url: data.logo_url,
-      settings: {
-        ...existingSettings,
-        primary_color: data.primary_color,
-      },
+      primary_color: data.primary_color,
     })
     .eq('id', workshopId)
 

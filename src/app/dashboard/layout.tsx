@@ -30,13 +30,17 @@ export default async function DashboardLayout({
     redirect('/mechanic')
   }
 
+  if (!profile.workshop_id) {
+    redirect('/login')
+  }
+
   const { data: workshop } = await supabase
     .from('workshops')
-    .select('id, name, slug, logo_url, settings')
+    .select('id, name, slug, logo_url, primary_color')
     .eq('id', profile.workshop_id)
     .single()
 
-  const primaryColor = (workshop?.settings as { primary_color?: string } | null)?.primary_color || '#ea580c'
+  const primaryColor = workshop?.primary_color || '#EA580C'
 
   return (
     <DashboardShell

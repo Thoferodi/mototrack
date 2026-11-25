@@ -16,9 +16,9 @@ interface ActionButton {
 
 const actionButtons: ActionButton[] = [
   { status: 'diagnosing', label: 'Diagnosticar', icon: Search, color: 'bg-blue-600 hover:bg-blue-500 active:bg-blue-700' },
-  { status: 'in_repair', label: 'Reparar', icon: Wrench, color: 'bg-orange-600 hover:bg-orange-500 active:bg-orange-700' },
-  { status: 'quality_check', label: 'Control', icon: CheckCircle2, color: 'bg-purple-600 hover:bg-purple-500 active:bg-purple-700' },
-  { status: 'ready_for_pickup', label: 'Listo', icon: PackageCheck, color: 'bg-green-600 hover:bg-green-500 active:bg-green-700' },
+  { status: 'in_progress', label: 'Reparar', icon: Wrench, color: 'bg-orange-600 hover:bg-orange-500 active:bg-orange-700' },
+  { status: 'testing', label: 'Control', icon: CheckCircle2, color: 'bg-purple-600 hover:bg-purple-500 active:bg-purple-700' },
+  { status: 'ready', label: 'Listo', icon: PackageCheck, color: 'bg-green-600 hover:bg-green-500 active:bg-green-700' },
 ]
 
 export function StatusControls({

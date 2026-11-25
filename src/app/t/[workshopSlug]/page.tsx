@@ -19,7 +19,7 @@ export default async function WorkshopPublicPage({ params }: WorkshopPageProps) 
   // Obtener datos públicos del taller por slug
   const { data: workshop, error } = await supabase
     .from('workshops')
-    .select('id, name, slug, logo_url, address, phone, settings')
+    .select('id, name, slug, logo_url, address, phone_whatsapp, primary_color')
     .eq('slug', params.workshopSlug)
     .single()
 
@@ -27,8 +27,8 @@ export default async function WorkshopPublicPage({ params }: WorkshopPageProps) 
     notFound()
   }
 
-  const primaryColor = (workshop.settings as any)?.primary_color || '#3b82f6'
-  const cleanWorkshopPhone = workshop.phone?.replace(/\D/g, '') || ''
+  const primaryColor = workshop.primary_color || '#EA580C'
+  const cleanWorkshopPhone = workshop.phone_whatsapp?.replace(/\D/g, '') || ''
 
   const SERVICES = [
     { name: 'Mantenimiento Preventivo', icon: CheckCircle2 },
@@ -149,7 +149,7 @@ export default async function WorkshopPublicPage({ params }: WorkshopPageProps) 
                 </div>
                 <div>
                   <p className="font-semibold text-slate-800">WhatsApp</p>
-                  <p className="text-slate-600">{workshop.phone || 'N/A'}</p>
+                  <p className="text-slate-600">{workshop.phone_whatsapp || 'N/A'}</p>
                 </div>
               </div>
             </div>

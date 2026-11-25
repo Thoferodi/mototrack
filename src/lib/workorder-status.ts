@@ -1,14 +1,14 @@
 import { Database } from '@/types/database.types'
 
-export type WorkOrderStatus = Database['public']['Enums']['workorder_status']
+export type WorkOrderStatus = Database['public']['Enums']['order_status']
 
 export const WORKORDER_STATUS_ORDER: WorkOrderStatus[] = [
   'received',
   'diagnosing',
   'waiting_approval',
-  'in_repair',
-  'quality_check',
-  'ready_for_pickup',
+  'in_progress',
+  'testing',
+  'ready',
   'delivered',
 ]
 
@@ -16,13 +16,15 @@ export const WORKORDER_STATUS_LABELS: Record<WorkOrderStatus, string> = {
   received: 'Recibida',
   diagnosing: 'Diagnosticando',
   waiting_approval: 'Esperando Aprobación',
-  in_repair: 'En Reparación',
-  quality_check: 'Control de Calidad',
-  ready_for_pickup: 'Lista para Entrega',
+  in_progress: 'En Reparación',
+  testing: 'Control de Calidad',
+  ready: 'Lista para Entrega',
   delivered: 'Entregada',
+  cancelled: 'Cancelada',
 }
 
-export function getWorkOrderStatusLabel(status: string): string {
+export function getWorkOrderStatusLabel(status: string | null | undefined): string {
+  if (!status) return 'Recibida'
   return WORKORDER_STATUS_LABELS[status as WorkOrderStatus] || status
 }
 
@@ -34,4 +36,9 @@ const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12
 
 export function isValidUUID(value: string): boolean {
   return UUID_REGEX.test(value.trim())
+}
+
+export function parseMediaUrls(mediaUrls: unknown): string[] {
+  if (!Array.isArray(mediaUrls)) return []
+  return mediaUrls.filter((u): u is string => typeof u === 'string' && u.length > 0)
 }

@@ -20,6 +20,7 @@ import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import {
   CatalogItem,
+  CatalogItemType,
   createCatalogItem,
   updateCatalogItem,
   deleteCatalogItem,
@@ -28,13 +29,13 @@ import {
 export function CatalogManager({ initialItems }: { initialItems: CatalogItem[] }) {
   const [items, setItems] = React.useState<CatalogItem[]>(initialItems)
   const [search, setSearch] = React.useState('')
-  const [typeFilter, setTypeFilter] = React.useState<'all' | 'part' | 'labor'>('all')
+  const [typeFilter, setTypeFilter] = React.useState<'all' | CatalogItemType>('all')
 
   const [isFormOpen, setIsFormOpen] = React.useState(false)
   const [editingItem, setEditingItem] = React.useState<CatalogItem | null>(null)
 
   const [name, setName] = React.useState('')
-  const [type, setType] = React.useState<'part' | 'labor'>('part')
+  const [type, setType] = React.useState<CatalogItemType>('spare_part')
   const [defaultPrice, setDefaultPrice] = React.useState('0')
   const [sku, setSku] = React.useState('')
   const [notes, setNotes] = React.useState('')
@@ -52,7 +53,7 @@ export function CatalogManager({ initialItems }: { initialItems: CatalogItem[] }
   const openCreateForm = () => {
     setEditingItem(null)
     setName('')
-    setType('part')
+    setType('spare_part')
     setDefaultPrice('0')
     setSku('')
     setNotes('')
@@ -242,11 +243,11 @@ export function CatalogManager({ initialItems }: { initialItems: CatalogItem[] }
                   <select
                     id="cat-type"
                     value={type}
-                    onChange={(e) => setType(e.target.value as 'part' | 'labor')}
+                    onChange={(e) => setType(e.target.value as CatalogItemType)}
                     disabled={isSaving}
                     className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                   >
-                    <option value="part">Repuesto</option>
+                    <option value="spare_part">Repuesto</option>
                     <option value="labor">Mano de Obra</option>
                   </select>
                 </div>
@@ -325,9 +326,9 @@ export function CatalogManager({ initialItems }: { initialItems: CatalogItem[] }
           </Button>
           <Button
             type="button"
-            variant={typeFilter === 'part' ? 'default' : 'ghost'}
+            variant={typeFilter === 'spare_part' ? 'default' : 'ghost'}
             size="sm"
-            onClick={() => setTypeFilter('part')}
+            onClick={() => setTypeFilter('spare_part')}
           >
             Repuestos
           </Button>

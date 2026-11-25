@@ -10,19 +10,39 @@ import { Button } from '@/components/ui/button'
 import { Database } from '@/types/database.types'
 import { CopyTrackerButton } from './copy-button'
 
-export type OrderWithDetails = Database['public']['Tables']['workorders']['Row'] & {
-  motorcycles: Pick<Database['public']['Tables']['motorcycles']['Row'], 'plate' | 'make' | 'model'> | null
-  customers: Pick<Database['public']['Tables']['customers']['Row'], 'full_name' | 'phone'> | null
+type OrderItemSummary = Pick<
+  Database['public']['Tables']['order_items']['Row'],
+  'quantity' | 'unit_price' | 'approved'
+>
+
+export type OrderWithDetails = Database['public']['Tables']['work_orders']['Row'] & {
+  motorcycles:
+    | (Pick<Database['public']['Tables']['motorcycles']['Row'], 'license_plate' | 'brand' | 'model'> & {
+        customers: Pick<
+          Database['public']['Tables']['customers']['Row'],
+          'full_name' | 'phone_whatsapp'
+        > | null
+      })
+    | null
+  order_items?: OrderItemSummary[]
 }
 
 const KANBAN_COLUMNS = [
   { id: 'received', label: 'Recibidas', variant: 'secondary' as const },
   { id: 'diagnosing', label: 'En Diagnóstico', variant: 'warning' as const },
   { id: 'waiting_approval', label: 'Esperando Aprobación', variant: 'destructive' as const },
-  { id: 'in_repair', label: 'En Reparación', variant: 'default' as const },
-  { id: 'quality_check', label: 'Control Calidad', variant: 'outline' as const },
-  { id: 'ready_for_pickup', label: 'Listas', variant: 'success' as const },
+  { id: 'in_progress', label: 'En Reparación', variant: 'default' as const },
+  { id: 'testing', label: 'Control Calidad', variant: 'outline' as const },
+  { id: 'ready', label: 'Listas', variant: 'success' as const },
 ]
+
+function calcOrderTotal(items?: OrderItemSummary[]): number {
+  if (!items || items.length === 0) return 0
+  return items.reduce((acc, item) => {
+    if (item.approved === false) return acc
+    return acc + Number(item.quantity ?? 1) * Number(item.unit_price ?? 0)
+  }, 0)
+}
 
 export function OrdersBoard({ orders }: { orders: OrderWithDetails[] }) {
   const [search, setSearch] = React.useState('')
@@ -32,24 +52,28 @@ export function OrdersBoard({ orders }: { orders: OrderWithDetails[] }) {
   const filteredOrders = React.useMemo(() => {
     if (!normalizedSearch) return orders
     return orders.filter((order) => {
-      const plate = order.motorcycles?.plate?.toLowerCase() || ''
-      const model = `${order.motorcycles?.make || ''} ${order.motorcycles?.model || ''}`.toLowerCase()
-      const customer = order.customers?.full_name?.toLowerCase() || ''
+      const plate = order.motorcycles?.license_plate?.toLowerCase() || ''
+      const model = `${order.motorcycles?.brand || ''} ${order.motorcycles?.model || ''}`.toLowerCase()
+      const customer = order.motorcycles?.customers?.full_name?.toLowerCase() || ''
       const shortId = order.id.slice(0, 8).toLowerCase()
+      const orderNum = String(order.order_number || '')
       return (
         plate.includes(normalizedSearch) ||
         model.includes(normalizedSearch) ||
         customer.includes(normalizedSearch) ||
-        shortId.includes(normalizedSearch)
+        shortId.includes(normalizedSearch) ||
+        orderNum.includes(normalizedSearch)
       )
     })
   }, [orders, normalizedSearch])
 
-  const activeOrders = filteredOrders.filter((o) => o.status !== 'delivered')
+  const activeOrders = filteredOrders.filter(
+    (o) => o.status !== 'delivered' && o.status !== 'cancelled'
+  )
   const deliveredOrders = filteredOrders.filter((o) => o.status === 'delivered')
 
   const ordersByStatus = (status: string) =>
-    activeOrders.filter((order) => order.status === status)
+    activeOrders.filter((order) => (order.status || 'received') === status)
 
   return (
     <div className="space-y-4">
@@ -108,20 +132,22 @@ export function OrdersBoard({ orders }: { orders: OrderWithDetails[] }) {
                         <CardHeader className="p-4 pb-2 space-y-3">
                           <div className="flex justify-between items-start">
                             <Badge className="font-mono text-sm tracking-wider" variant={column.variant}>
-                              {order.motorcycles?.plate || 'SIN-PLACA'}
+                              {order.motorcycles?.license_plate || 'SIN-PLACA'}
                             </Badge>
-                            <CopyTrackerButton token={order.tracking_token} />
+                            {order.tracking_token && <CopyTrackerButton token={order.tracking_token} />}
                           </div>
                           <div className="space-y-1">
                             <CardTitle className="text-sm font-bold flex items-center gap-2">
                               <Bike className="w-4 h-4 text-slate-400 shrink-0" />
                               <span className="truncate">
-                                {order.motorcycles?.make} {order.motorcycles?.model || 'Moto'}
+                                {order.motorcycles?.brand} {order.motorcycles?.model || 'Moto'}
                               </span>
                             </CardTitle>
                             <p className="text-xs text-muted-foreground flex items-center gap-2">
                               <User className="w-3.5 h-3.5 shrink-0" />
-                              <span className="truncate">{order.customers?.full_name || 'Sin cliente'}</span>
+                              <span className="truncate">
+                                {order.motorcycles?.customers?.full_name || 'Sin cliente'}
+                              </span>
                             </p>
                           </div>
                         </CardHeader>
@@ -129,14 +155,16 @@ export function OrdersBoard({ orders }: { orders: OrderWithDetails[] }) {
                           <div className="flex items-center justify-between gap-2 mt-2 pt-2 border-t border-slate-100 text-[10px] text-slate-400 uppercase font-medium">
                             <span className="flex items-center gap-1">
                               <ClipboardList className="w-3 h-3" />
-                              ID: {order.id.split('-')[0]}
+                              #{order.order_number ?? order.id.split('-')[0]}
                             </span>
-                            <span>
-                              {new Date(order.created_at).toLocaleDateString('es-ES', {
-                                day: '2-digit',
-                                month: 'short',
-                              })}
-                            </span>
+                            {order.created_at && (
+                              <span>
+                                {new Date(order.created_at).toLocaleDateString('es-ES', {
+                                  day: '2-digit',
+                                  month: 'short',
+                                })}
+                              </span>
+                            )}
                           </div>
                         </CardContent>
                       </Card>
@@ -161,7 +189,7 @@ export function OrdersBoard({ orders }: { orders: OrderWithDetails[] }) {
                 <CardHeader className="p-4 pb-2">
                   <div className="flex justify-between items-start">
                     <Badge className="font-mono text-sm" variant="secondary">
-                      {order.motorcycles?.plate || 'SIN-PLACA'}
+                      {order.motorcycles?.license_plate || 'SIN-PLACA'}
                     </Badge>
                     <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200 gap-1" variant="outline">
                       <CheckCircle2 className="w-3 h-3" />
@@ -169,16 +197,16 @@ export function OrdersBoard({ orders }: { orders: OrderWithDetails[] }) {
                     </Badge>
                   </div>
                   <CardTitle className="text-base font-bold pt-2">
-                    {order.motorcycles?.make} {order.motorcycles?.model}
+                    {order.motorcycles?.brand} {order.motorcycles?.model}
                   </CardTitle>
                   <p className="text-xs text-muted-foreground">
-                    Cliente: {order.customers?.full_name || 'Sin cliente'}
+                    Cliente: {order.motorcycles?.customers?.full_name || 'Sin cliente'}
                   </p>
                 </CardHeader>
                 <CardContent className="p-4 pt-2 flex justify-between items-center text-xs text-slate-500 border-t mt-2">
-                  <span>ID: {order.id.split('-')[0]}</span>
+                  <span>#{order.order_number ?? order.id.split('-')[0]}</span>
                   <span className="font-bold text-slate-900">
-                    ${(order.total_amount || 0).toLocaleString('es-CL')}
+                    ${calcOrderTotal(order.order_items).toLocaleString('es-CL')}
                   </span>
                 </CardContent>
               </Card>

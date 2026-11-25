@@ -46,11 +46,11 @@ export async function getMechanicOrders() {
   const { supabase, workshopId, mechanicId } = await getMechanicContext()
 
   const { data, error } = await supabase
-    .from('workorders')
-    .select('*, motorcycles(*), customers(full_name)')
+    .from('work_orders')
+    .select('*, motorcycles(*, customers(full_name))')
     .eq('workshop_id', workshopId)
-    .or(`technician_id.eq.${mechanicId},technician_id.is.null`)
-    .neq('status', 'delivered')
+    .or(`mechanic_id.eq.${mechanicId},mechanic_id.is.null`)
+    .not('status', 'in', '("delivered","cancelled")')
     .order('created_at', { ascending: false })
 
   if (error) throw error
@@ -67,10 +67,10 @@ export async function updateMechanicOrderStatus(
     const nowIso = new Date().toISOString()
 
     const { data: updatedOrder, error: updateError } = await supabase
-      .from('workorders')
+      .from('work_orders')
       .update({
         status,
-        technician_id: mechanicId,
+        mechanic_id: mechanicId,
         updated_at: nowIso,
       })
       .eq('id', orderId)
@@ -89,10 +89,11 @@ export async function updateMechanicOrderStatus(
     const { error: timelineError } = await supabase
       .from('order_timeline_events')
       .insert({
-        workorder_id: orderId,
+        work_order_id: orderId,
         workshop_id: workshopId,
-        status,
-        description: description?.trim() || `El mecánico actualizó el estado a: ${statusLabel}`,
+        status_snapshot: status,
+        public_comment:
+          description?.trim() || `El mecánico actualizó el estado a: ${statusLabel}`,
         created_by: mechanicId,
       })
 
@@ -137,7 +138,7 @@ export async function uploadAndSaveEvidence(
 
     // Validar que la orden pertenece al taller del mecánico
     const { data: order, error: orderError } = await supabase
-      .from('workorders')
+      .from('work_orders')
       .select('id, status, tracking_token, workshops(slug)')
       .eq('id', orderId)
       .eq('workshop_id', workshopId)
@@ -172,10 +173,10 @@ export async function uploadAndSaveEvidence(
     const { error: timelineError } = await supabase
       .from('order_timeline_events')
       .insert({
-        workorder_id: orderId,
+        work_order_id: orderId,
         workshop_id: workshopId,
-        status: order.status,
-        description,
+        status_snapshot: order.status || 'received',
+        public_comment: description,
         media_urls: [publicUrl],
         created_by: mechanicId,
       })
@@ -188,7 +189,7 @@ export async function uploadAndSaveEvidence(
     }
 
     await supabase
-      .from('workorders')
+      .from('work_orders')
       .update({ updated_at: new Date().toISOString() })
       .eq('id', orderId)
       .eq('workshop_id', workshopId)
@@ -213,7 +214,7 @@ export async function saveEvidence(
   const { supabase, workshopId, mechanicId } = await getMechanicContext()
 
   const { data: order, error: orderError } = await supabase
-    .from('workorders')
+    .from('work_orders')
     .select('id, status, tracking_token, workshops(slug)')
     .eq('id', orderId)
     .eq('workshop_id', workshopId)
@@ -224,10 +225,10 @@ export async function saveEvidence(
   }
 
   const { error } = await supabase.from('order_timeline_events').insert({
-    workorder_id: orderId,
+    work_order_id: orderId,
     workshop_id: workshopId,
-    status: order.status,
-    description: description.trim(),
+    status_snapshot: order.status || 'received',
+    public_comment: description.trim(),
     media_urls: mediaUrls,
     created_by: mechanicId,
   })
@@ -235,7 +236,7 @@ export async function saveEvidence(
   if (error) throw error
 
   await supabase
-    .from('workorders')
+    .from('work_orders')
     .update({ updated_at: new Date().toISOString() })
     .eq('id', orderId)
     .eq('workshop_id', workshopId)

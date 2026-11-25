@@ -118,13 +118,15 @@ export default function NewOrderPage() {
         setFoundMotorcycleId(data.id)
         setFoundCustomerId(data.customer_id)
         setValue('customer_name', (data.customers as any)?.full_name || '', { shouldValidate: true })
-        setValue('customer_phone', (data.customers as any)?.phone || '', { shouldValidate: true })
-        setValue('motorcycle_make', data.make, { shouldValidate: true })
+        setValue('customer_phone', (data.customers as any)?.phone_whatsapp || '', {
+          shouldValidate: true,
+        })
+        setValue('motorcycle_make', data.brand, { shouldValidate: true })
         setValue('motorcycle_model', data.model, { shouldValidate: true })
         setValue('motorcycle_year', data.year ?? undefined)
         setSearchFeedback({
           type: 'success',
-          message: `Vehículo encontrado (${data.make} ${data.model}). Datos autocompletados.`,
+          message: `Vehículo encontrado (${data.brand} ${data.model}). Datos autocompletados.`,
         })
       } else {
         setFoundMotorcycleId(undefined)
@@ -181,14 +183,14 @@ export default function NewOrderPage() {
       const customerId = await ensureCustomer({
         id: foundCustomerId,
         full_name: values.customer_name,
-        phone: values.customer_phone,
+        phone_whatsapp: values.customer_phone,
       })
 
       const motorcycleId = await ensureMotorcycle({
         id: foundMotorcycleId,
         customer_id: customerId,
-        plate: values.plate.toUpperCase(),
-        make: values.motorcycle_make,
+        license_plate: values.plate.replace(/\s+/g, '').toUpperCase(),
+        brand: values.motorcycle_make,
         model: values.motorcycle_model,
         year: values.motorcycle_year,
       })
@@ -213,10 +215,9 @@ export default function NewOrderPage() {
 
       // 4. Crear Orden + Evento inicial en Timeline
       const order = await createWorkOrder({
-        customer_id: customerId,
         motorcycle_id: motorcycleId,
-        mileage: values.mileage,
-        description: values.description,
+        mileage_in: values.mileage,
+        customer_notes: values.description,
         fuel_level: values.fuel_level,
         media_urls: mediaUrls,
         signature_url: signatureUrl,

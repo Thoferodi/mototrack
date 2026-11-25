@@ -19,12 +19,12 @@ export default async function SettingsPage() {
     .eq('id', user.id)
     .single()
 
-  if (profileError || !profile) {
+  if (profileError || !profile || !profile.workshop_id) {
     console.error('Error fetching profile:', profileError)
     return (
       <div className="p-6">
         <div className="bg-destructive/10 border border-destructive/20 text-destructive p-4 rounded-xl text-sm font-medium">
-          Error al cargar el perfil del usuario.
+          Error al cargar el perfil del usuario o taller asociado.
         </div>
       </div>
     )
@@ -32,7 +32,7 @@ export default async function SettingsPage() {
 
   const { data: workshop, error: workshopError } = await supabase
     .from('workshops')
-    .select('*')
+    .select('id, name, phone_whatsapp, address, logo_url, primary_color')
     .eq('id', profile.workshop_id)
     .single()
 

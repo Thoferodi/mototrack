@@ -10,19 +10,22 @@ import { updateItemApprovalStatus } from './actions'
 interface ItemApprovalButtonsProps {
   trackingToken: string
   itemId: string
-  currentStatus: 'pending' | 'approved' | 'rejected'
+  approved: boolean | null
   isLocked: boolean
 }
 
 export function ItemApprovalButtons({
   trackingToken,
   itemId,
-  currentStatus,
+  approved,
   isLocked,
 }: ItemApprovalButtonsProps) {
   const router = useRouter()
   const [pendingAction, setPendingAction] = useState<'approved' | 'rejected' | null>(null)
   const [error, setError] = useState<string | null>(null)
+
+  const currentStatus: 'pending' | 'approved' | 'rejected' =
+    approved === true ? 'approved' : approved === false ? 'rejected' : 'pending'
 
   const handleAction = async (status: 'approved' | 'rejected') => {
     if (isLocked || pendingAction !== null || currentStatus === status) return

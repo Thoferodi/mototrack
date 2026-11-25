@@ -32,11 +32,11 @@ export async function searchOrderByPlate(
     .select(`
       id,
       customers (
-        phone
+        phone_whatsapp
       )
     `)
     .eq('workshop_id', workshopId)
-    .in('plate', plateVariants)
+    .in('license_plate', plateVariants)
 
   if (motoError || !motorcycles || motorcycles.length === 0) {
     return {
@@ -45,12 +45,13 @@ export async function searchOrderByPlate(
   }
 
   for (const motorcycle of motorcycles) {
-    const customerPhone = (motorcycle.customers as { phone?: string | null } | null)?.phone || ''
+    const customerPhone =
+      (motorcycle.customers as { phone_whatsapp?: string | null } | null)?.phone_whatsapp || ''
     const cleanedPhone = customerPhone.replace(/\D/g, '')
 
     if (cleanedPhone.endsWith(cleanLast4)) {
       const { data: workOrder, error: orderError } = await supabase
-        .from('workorders')
+        .from('work_orders')
         .select('tracking_token')
         .eq('workshop_id', workshopId)
         .eq('motorcycle_id', motorcycle.id)

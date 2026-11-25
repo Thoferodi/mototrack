@@ -11,6 +11,7 @@ import {
   CheckCircle2,
   Truck,
   Circle,
+  XCircle,
   MapPin,
   Phone,
   Lock,
@@ -22,6 +23,7 @@ import {
   WORKORDER_STATUS_ORDER,
   WorkOrderStatus,
   isValidUUID,
+  parseMediaUrls,
 } from '@/lib/workorder-status'
 import { ItemApprovalButtons } from './ItemApprovalButtons'
 
@@ -50,21 +52,21 @@ const statusConfig: Record<
     color: 'bg-yellow-100 text-yellow-700 border-yellow-200',
     description: 'El presupuesto está listo. Por favor, revisa los ítems y aprueba para continuar.',
   },
-  in_repair: {
+  in_progress: {
     label: 'En Reparación',
     shortLabel: 'Reparación',
     icon: Wrench,
     color: 'bg-orange-100 text-orange-700 border-orange-200',
     description: '¡Manos a la obra! Estamos trabajando en las reparaciones aprobadas.',
   },
-  quality_check: {
+  testing: {
     label: 'Control de Calidad',
     shortLabel: 'Calidad',
     icon: CheckCircle2,
     color: 'bg-purple-100 text-purple-700 border-purple-200',
     description: 'Estamos realizando pruebas finales para asegurar que todo esté perfecto.',
   },
-  ready_for_pickup: {
+  ready: {
     label: 'Lista para Entrega',
     shortLabel: 'Lista',
     icon: PackageCheck,
@@ -77,6 +79,13 @@ const statusConfig: Record<
     icon: Truck,
     color: 'bg-emerald-100 text-emerald-700 border-emerald-200',
     description: 'La orden ha sido finalizada y la moto entregada satisfactoriamente.',
+  },
+  cancelled: {
+    label: 'Cancelada',
+    shortLabel: 'Cancelada',
+    icon: XCircle,
+    color: 'bg-red-100 text-red-700 border-red-200',
+    description: 'Esta orden de trabajo ha sido cancelada. Contáctanos si tienes dudas.',
   },
 }
 
@@ -91,18 +100,18 @@ export async function PublicTrackerView({ token, workshopSlug }: PublicTrackerVi
   if (isValidUUID(token)) {
     const supabase = createAdminSupabaseClient()
     const { data, error } = await supabase
-      .from('workorders')
+      .from('work_orders')
       .select(`
         id,
+        order_number,
         status,
         tracking_token,
-        mileage,
-        description,
-        total_amount,
+        mileage_in,
+        customer_notes,
         created_at,
         updated_at,
-        workshops (id, name, slug, logo_url, address, phone, settings),
-        motorcycles (plate, make, model, year, color),
+        workshops (id, name, slug, logo_url, address, phone_whatsapp, primary_color),
+        motorcycles (license_plate, brand, model, year),
         order_items (*),
         order_timeline_events (*)
       `)
@@ -141,33 +150,29 @@ export async function PublicTrackerView({ token, workshopSlug }: PublicTrackerVi
     )
   }
 
-  const currentStatus =
-    statusConfig[order.status as WorkOrderStatus] || statusConfig.received
+  const orderStatus = (order.status || 'received') as WorkOrderStatus
+  const currentStatus = statusConfig[orderStatus] || statusConfig.received
   const StatusIcon = currentStatus.icon
-  const currentStepIndex = Math.max(
-    0,
-    WORKORDER_STATUS_ORDER.indexOf(order.status as WorkOrderStatus)
-  )
+  const isCancelled = orderStatus === 'cancelled'
+  const currentStepIndex = isCancelled
+    ? -1
+    : Math.max(0, WORKORDER_STATUS_ORDER.indexOf(orderStatus))
 
   const timeline =
     (order.order_timeline_events as any[] | null)?.sort(
-      (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      (a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime()
     ) || []
 
-  const items =
-    (order.order_items as any[] | null)?.sort(
-      (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
-    ) || []
+  const items = (order.order_items as any[] | null) || []
+  const isWaitingApproval = orderStatus === 'waiting_approval'
 
-  const isWaitingApproval = order.status === 'waiting_approval'
-
-  // Siempre excluir ítems rechazados para alinear con workorders.total_amount (Bloque A)
+  // Excluir ítems rechazados (approved === false)
   const total = items.reduce((acc, item) => {
-    if (item.status === 'rejected') return acc
-    return acc + item.quantity * item.unit_price
+    if (item.approved === false) return acc
+    return acc + Number(item.quantity ?? 1) * Number(item.unit_price ?? 0)
   }, 0)
 
-  const cleanPhone = order.workshops?.phone?.replace(/\D/g, '') || ''
+  const cleanPhone = order.workshops?.phone_whatsapp?.replace(/\D/g, '') || ''
   const backHref = workshopSlug ? `/t/${workshopSlug}` : '/track'
 
   return (
@@ -209,7 +214,7 @@ export async function PublicTrackerView({ token, workshopSlug }: PublicTrackerVi
               variant="outline"
               className="text-xs font-mono font-bold bg-slate-900 text-white border-slate-900"
             >
-              {order.motorcycles?.plate}
+              {order.motorcycles?.license_plate}
             </Badge>
           </div>
         </div>
@@ -231,39 +236,41 @@ export async function PublicTrackerView({ token, workshopSlug }: PublicTrackerVi
             </div>
 
             {/* Pizza Tracker Steps */}
-            <div className="pt-2">
-              <div className="grid grid-cols-7 gap-1 items-start">
-                {WORKORDER_STATUS_ORDER.map((stepStatus, idx) => {
-                  const isCompleted = idx < currentStepIndex
-                  const isCurrent = idx === currentStepIndex
-                  const stepCfg = statusConfig[stepStatus]
-                  return (
-                    <div key={stepStatus} className="flex flex-col items-center gap-1">
-                      <div
-                        className={`h-2 w-full rounded-full transition-colors ${
-                          isCurrent
-                            ? 'bg-primary'
-                            : isCompleted
-                              ? 'bg-emerald-500'
-                              : 'bg-slate-200'
-                        }`}
-                      />
-                      <span
-                        className={`text-[9px] leading-tight text-center hidden sm:block ${
-                          isCurrent
-                            ? 'font-black text-slate-900'
-                            : isCompleted
-                              ? 'font-semibold text-emerald-700'
-                              : 'text-slate-400'
-                        }`}
-                      >
-                        {stepCfg.shortLabel}
-                      </span>
-                    </div>
-                  )
-                })}
+            {!isCancelled && (
+              <div className="pt-2">
+                <div className="grid grid-cols-7 gap-1 items-start">
+                  {WORKORDER_STATUS_ORDER.map((stepStatus, idx) => {
+                    const isCompleted = idx < currentStepIndex
+                    const isCurrent = idx === currentStepIndex
+                    const stepCfg = statusConfig[stepStatus]
+                    return (
+                      <div key={stepStatus} className="flex flex-col items-center gap-1">
+                        <div
+                          className={`h-2 w-full rounded-full transition-colors ${
+                            isCurrent
+                              ? 'bg-primary'
+                              : isCompleted
+                                ? 'bg-emerald-500'
+                                : 'bg-slate-200'
+                          }`}
+                        />
+                        <span
+                          className={`text-[9px] leading-tight text-center hidden sm:block ${
+                            isCurrent
+                              ? 'font-black text-slate-900'
+                              : isCompleted
+                                ? 'font-semibold text-emerald-700'
+                                : 'text-slate-400'
+                          }`}
+                        >
+                          {stepCfg.shortLabel}
+                        </span>
+                      </div>
+                    )
+                  })}
+                </div>
               </div>
-            </div>
+            )}
           </CardContent>
         </Card>
 
@@ -276,14 +283,14 @@ export async function PublicTrackerView({ token, workshopSlug }: PublicTrackerVi
             <div>
               <p className="text-[10px] font-bold text-muted-foreground uppercase">Vehículo</p>
               <h3 className="font-bold text-slate-900">
-                {order.motorcycles?.make} {order.motorcycles?.model}
+                {order.motorcycles?.brand} {order.motorcycles?.model}
               </h3>
             </div>
           </div>
           <div className="text-right">
             <p className="text-[10px] font-bold text-muted-foreground uppercase">Kilometraje</p>
             <h3 className="font-bold text-slate-900">
-              {order.mileage != null ? `${order.mileage.toLocaleString('es-CL')} km` : '—'}
+              {order.mileage_in != null ? `${order.mileage_in.toLocaleString('es-CL')} km` : '—'}
             </h3>
           </div>
         </div>
@@ -324,39 +331,44 @@ export async function PublicTrackerView({ token, workshopSlug }: PublicTrackerVi
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {items.map((item) => (
-                    <tr
-                      key={item.id}
-                      className={item.status === 'rejected' ? 'opacity-50 bg-slate-50/50' : ''}
-                    >
-                      <td className="px-4 py-3">
-                        <div
-                          className={`font-semibold text-slate-800 ${
-                            item.status === 'rejected' ? 'line-through' : ''
-                          }`}
-                        >
-                          {item.description}
-                        </div>
-                        <div className="text-[10px] text-muted-foreground uppercase font-bold">
-                          {item.type === 'labor' ? 'Mano de Obra' : 'Repuesto'}
-                        </div>
-                      </td>
-                      <td className="px-4 py-3 text-right text-slate-600 whitespace-nowrap">
-                        {item.quantity} x ${item.unit_price.toLocaleString('es-CL')}
-                      </td>
-                      <td className="px-4 py-3 text-right font-bold text-slate-900 whitespace-nowrap">
-                        ${(item.quantity * item.unit_price).toLocaleString('es-CL')}
-                      </td>
-                      <td className="px-4 py-3 text-center">
-                        <ItemApprovalButtons
-                          trackingToken={token}
-                          itemId={item.id}
-                          currentStatus={item.status || 'pending'}
-                          isLocked={!isWaitingApproval}
-                        />
-                      </td>
-                    </tr>
-                  ))}
+                  {items.map((item) => {
+                    const isRejected = item.approved === false
+                    const qty = Number(item.quantity ?? 1)
+                    const price = Number(item.unit_price ?? 0)
+                    return (
+                      <tr
+                        key={item.id}
+                        className={isRejected ? 'opacity-50 bg-slate-50/50' : ''}
+                      >
+                        <td className="px-4 py-3">
+                          <div
+                            className={`font-semibold text-slate-800 ${
+                              isRejected ? 'line-through' : ''
+                            }`}
+                          >
+                            {item.description}
+                          </div>
+                          <div className="text-[10px] text-muted-foreground uppercase font-bold">
+                            {item.type === 'labor' ? 'Mano de Obra' : 'Repuesto'}
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 text-right text-slate-600 whitespace-nowrap">
+                          {qty} x ${price.toLocaleString('es-CL')}
+                        </td>
+                        <td className="px-4 py-3 text-right font-bold text-slate-900 whitespace-nowrap">
+                          ${(qty * price).toLocaleString('es-CL')}
+                        </td>
+                        <td className="px-4 py-3 text-center">
+                          <ItemApprovalButtons
+                            trackingToken={token}
+                            itemId={item.id}
+                            approved={item.approved ?? null}
+                            isLocked={!isWaitingApproval}
+                          />
+                        </td>
+                      </tr>
+                    )
+                  })}
                   {items.length === 0 && (
                     <tr>
                       <td colSpan={4} className="px-4 py-8 text-center text-muted-foreground italic">
@@ -391,17 +403,16 @@ export async function PublicTrackerView({ token, workshopSlug }: PublicTrackerVi
           ) : (
             <div className="relative space-y-6 before:absolute before:left-[19px] before:top-2 before:bottom-2 before:w-0.5 before:bg-slate-200">
               {timeline.map((event) => {
-                const config = statusConfig[event.status as WorkOrderStatus] || {
-                  label: event.status || 'Actualización',
+                const snapshot = event.status_snapshot as WorkOrderStatus | null
+                const config = (snapshot && statusConfig[snapshot]) || {
+                  label: snapshot || 'Actualización',
                   shortLabel: 'Estado',
                   icon: Circle,
                   color: 'bg-slate-100 text-slate-500 border-slate-200',
                   description: '',
                 }
                 const Icon = config.icon
-                const mediaUrls = Array.isArray(event.media_urls)
-                  ? event.media_urls.filter((url: unknown) => typeof url === 'string' && url.length > 0)
-                  : []
+                const mediaUrls = parseMediaUrls(event.media_urls)
 
                 return (
                   <div key={event.id} className="relative pl-12">
@@ -417,22 +428,24 @@ export async function PublicTrackerView({ token, workshopSlug }: PublicTrackerVi
                         <span className="text-[10px] font-black uppercase text-primary tracking-widest">
                           {config.label}
                         </span>
-                        <span className="text-[10px] font-bold text-muted-foreground whitespace-nowrap">
-                          {new Date(event.created_at).toLocaleTimeString('es-ES', {
-                            hour: '2-digit',
-                            minute: '2-digit',
-                          })}
-                          {' · '}
-                          {new Date(event.created_at).toLocaleDateString('es-ES', {
-                            day: '2-digit',
-                            month: 'short',
-                          })}
-                        </span>
+                        {event.created_at && (
+                          <span className="text-[10px] font-bold text-muted-foreground whitespace-nowrap">
+                            {new Date(event.created_at).toLocaleTimeString('es-ES', {
+                              hour: '2-digit',
+                              minute: '2-digit',
+                            })}
+                            {' · '}
+                            {new Date(event.created_at).toLocaleDateString('es-ES', {
+                              day: '2-digit',
+                              month: 'short',
+                            })}
+                          </span>
+                        )}
                       </div>
 
-                      {event.description && (
+                      {event.public_comment && (
                         <p className="text-sm text-slate-700 leading-snug whitespace-pre-wrap">
-                          {event.description}
+                          {event.public_comment}
                         </p>
                       )}
 
@@ -471,7 +484,7 @@ export async function PublicTrackerView({ token, workshopSlug }: PublicTrackerVi
         {cleanPhone && (
           <div className="pt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
             <a
-              href={`tel:${order.workshops.phone}`}
+              href={`tel:${order.workshops.phone_whatsapp}`}
               className="flex items-center justify-center gap-2 w-full h-14 bg-white border-2 border-primary text-primary rounded-xl font-bold hover:bg-primary/5 transition-colors"
             >
               <Phone className="w-5 h-5" />

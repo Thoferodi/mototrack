@@ -3,21 +3,12 @@
 import { useState } from 'react'
 import { updateOrderStatus } from './actions'
 import { Database } from '@/types/database.types'
+import { WORKORDER_STATUS_LABELS } from '@/lib/workorder-status'
 import { buildWhatsAppLink } from '@/lib/whatsapp'
 import { Button } from '@/components/ui/button'
 import { MessageSquare, Loader2, AlertCircle } from 'lucide-react'
 
-type Status = Database['public']['Enums']['workorder_status']
-
-const statusMap: Record<Status, { label: string }> = {
-  received: { label: 'Recibida' },
-  diagnosing: { label: 'Diagnosticando' },
-  waiting_approval: { label: 'Esperando Aprobación' },
-  in_repair: { label: 'En Reparación' },
-  quality_check: { label: 'Control de Calidad' },
-  ready_for_pickup: { label: 'Lista para Entrega' },
-  delivered: { label: 'Entregada' },
-}
+type Status = Database['public']['Enums']['order_status']
 
 interface StatusSelectorProps {
   orderId: string
@@ -66,9 +57,13 @@ export function StatusSelector({
       setError('El cliente no tiene un número de WhatsApp válido registrado.')
       return
     }
+    if (!trackingToken) {
+      setError('Esta orden no tiene un token de seguimiento asignado.')
+      return
+    }
 
     const trackingUrl = `${window.location.origin}/track/${trackingToken}`
-    const statusText = statusMap[status]?.label || status
+    const statusText = WORKORDER_STATUS_LABELS[status] || status
 
     const whatsappUrl = buildWhatsAppLink(
       customerPhone,
@@ -96,7 +91,7 @@ export function StatusSelector({
               onChange={(e) => handleStatusChange(e.target.value as Status)}
               className="appearance-none h-11 px-4 pr-10 rounded-full border-2 border-primary/20 bg-background text-sm font-bold focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent disabled:opacity-50 transition-all cursor-pointer hover:border-primary/40"
             >
-              {Object.entries(statusMap).map(([value, { label }]) => (
+              {Object.entries(WORKORDER_STATUS_LABELS).map(([value, label]) => (
                 <option key={value} value={value}>
                   {label}
                 </option>

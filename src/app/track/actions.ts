@@ -24,7 +24,7 @@ export async function globalSearchOrder(
     }
 
     const { data: workOrder, error } = await supabase
-      .from('workorders')
+      .from('work_orders')
       .select('tracking_token')
       .eq('tracking_token', cleanQuery)
       .maybeSingle()
@@ -61,23 +61,23 @@ export async function globalSearchOrder(
       id,
       workshop_id,
       customers (
-        phone
+        phone_whatsapp
       )
     `)
-    .in('plate', plateVariants)
-    .order('created_at', { ascending: false })
+    .in('license_plate', plateVariants)
 
   if (motoError || !motorcycles || motorcycles.length === 0) {
     return { error: 'No se encontró ninguna orden con esa placa y teléfono.' }
   }
 
   for (const moto of motorcycles) {
-    const customerPhone = (moto.customers as { phone?: string | null } | null)?.phone || ''
+    const customerPhone =
+      (moto.customers as { phone_whatsapp?: string | null } | null)?.phone_whatsapp || ''
     const cleanedPhone = customerPhone.replace(/\D/g, '')
 
     if (cleanedPhone.endsWith(cleanLast4)) {
       const { data: workOrder } = await supabase
-        .from('workorders')
+        .from('work_orders')
         .select('tracking_token')
         .eq('motorcycle_id', moto.id)
         .eq('workshop_id', moto.workshop_id)

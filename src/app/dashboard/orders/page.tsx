@@ -21,22 +21,24 @@ export default async function OrdersPage() {
     .eq('id', user.id)
     .single()
 
-  if (!profile) {
+  if (!profile || !profile.workshop_id) {
     redirect('/login')
   }
 
-  const { data: orders, error } = (await supabase
-    .from('workorders')
+  const { data: orders, error } = await supabase
+    .from('work_orders')
     .select(`
       *,
-      motorcycles (plate, make, model),
-      customers (full_name, phone)
+      motorcycles (
+        license_plate,
+        brand,
+        model,
+        customers (full_name, phone_whatsapp)
+      ),
+      order_items (quantity, unit_price, approved)
     `)
     .eq('workshop_id', profile.workshop_id)
-    .order('created_at', { ascending: false })) as {
-    data: OrderWithDetails[] | null
-    error: any
-  }
+    .order('created_at', { ascending: false })
 
   if (error) {
     console.error('Error fetching orders:', error)
@@ -65,7 +67,7 @@ export default async function OrdersPage() {
         </Button>
       </div>
 
-      <OrdersBoard orders={orders || []} />
+      <OrdersBoard orders={(orders as unknown as OrderWithDetails[]) || []} />
     </div>
   )
 }

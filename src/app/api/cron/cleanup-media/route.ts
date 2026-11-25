@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { Database } from '@/types/database.types'
 
 export const dynamic = 'force-dynamic'
 
@@ -24,7 +25,7 @@ export async function GET(request: Request) {
       )
     }
 
-    const supabase = createClient(supabaseUrl, serviceRoleKey, {
+    const supabase = createClient<Database>(supabaseUrl, serviceRoleKey, {
       auth: {
         persistSession: false,
       },
@@ -37,20 +38,19 @@ export async function GET(request: Request) {
 
     // 4. Buscar órdenes de trabajo entregadas (delivered) actualizadas hace más de 90 días
     // y sus eventos de timeline asociados que contengan media_urls.
-    // Como Supabase / PostgREST permite join entre workorders y order_timeline_events:
     const { data: eventsToClean, error: fetchError } = await supabase
       .from('order_timeline_events')
       .select(`
         id,
         media_urls,
-        workorder_id,
-        workorders!inner (
+        work_order_id,
+        work_orders!inner (
           status,
           updated_at
         )
       `)
-      .eq('workorders.status', 'delivered')
-      .lt('workorders.updated_at', cutoffDateISO)
+      .eq('work_orders.status', 'delivered')
+      .lt('work_orders.updated_at', cutoffDateISO)
       .not('media_urls', 'is', null)
 
     if (fetchError) {
@@ -71,11 +71,11 @@ export async function GET(request: Request) {
     let cleanedEventsCount = 0
 
     for (const event of eventsToClean) {
-      const mediaUrls = event.media_urls as string[]
-      if (!mediaUrls || mediaUrls.length === 0) continue
+      const mediaUrls = Array.isArray(event.media_urls)
+        ? event.media_urls.filter((u): u is string => typeof u === 'string' && u.length > 0)
+        : []
+      if (mediaUrls.length === 0) continue
 
-      // Extraer las rutas relativas de los archivos en el bucket 'evidences'
-      // Las URLs públicas de Supabase tienen el formato: .../storage/v1/object/public/evidences/path/to/file.webp
       const filePaths: string[] = []
       for (const url of mediaUrls) {
         try {
@@ -86,7 +86,6 @@ export async function GET(request: Request) {
             const path = urlObj.pathname.substring(index + marker.length)
             filePaths.push(path)
           } else {
-            // Si la URL es directa o relativa, intentar extraer después de 'evidences/'
             const parts = url.split('/evidences/')
             if (parts.length > 1) {
               filePaths.push(parts[1])
@@ -98,7 +97,6 @@ export async function GET(request: Request) {
       }
 
       if (filePaths.length > 0) {
-        // Borrar archivos físicamente del bucket 'evidences'
         const { error: storageError } = await supabase.storage
           .from('evidences')
           .remove(filePaths)
@@ -110,7 +108,6 @@ export async function GET(request: Request) {
         }
       }
 
-      // Actualizar el registro en order_timeline_events estableciendo media_urls = []
       const { error: updateError } = await supabase
         .from('order_timeline_events')
         .update({ media_urls: [] })

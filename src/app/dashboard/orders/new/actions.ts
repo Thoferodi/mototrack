@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { createServerSupabaseClient } from '@/supabase/server'
+import { normalizePlate } from '@/lib/workorder-status'
 
 async function getWorkshopContext() {
   const supabase = createServerSupabaseClient()
@@ -16,7 +17,9 @@ async function getWorkshopContext() {
     .eq('id', user.id)
     .single()
 
-  if (error || !profile) throw new Error('Perfil de taller no encontrado')
+  if (error || !profile || !profile.workshop_id) {
+    throw new Error('Perfil de taller no encontrado')
+  }
   return { workshopId: profile.workshop_id, userId: user.id }
 }
 
@@ -24,14 +27,14 @@ export async function searchMotorcycleByPlate(plate: string) {
   const supabase = createServerSupabaseClient()
   const { workshopId } = await getWorkshopContext()
 
-  const normalizedPlate = plate.trim().toUpperCase()
+  const normalizedPlate = normalizePlate(plate)
   if (!normalizedPlate) return null
 
   const { data, error } = await supabase
     .from('motorcycles')
     .select('*, customers(*)')
     .eq('workshop_id', workshopId)
-    .eq('plate', normalizedPlate)
+    .eq('license_plate', normalizedPlate)
     .maybeSingle()
 
   if (error) throw new Error(error.message)
@@ -96,13 +99,13 @@ export async function uploadSignatureDataUrl(dataUrl: string, fileName: string) 
 export async function ensureCustomer(customer: {
   id?: string
   full_name: string
-  phone: string
+  phone_whatsapp: string
 }) {
   const supabase = createServerSupabaseClient()
   const { workshopId } = await getWorkshopContext()
 
   const cleanName = customer.full_name.trim()
-  const cleanPhone = customer.phone.trim()
+  const cleanPhone = customer.phone_whatsapp.trim()
 
   if (customer.id) {
     const { data: existing } = await supabase
@@ -115,7 +118,7 @@ export async function ensureCustomer(customer: {
     if (existing) {
       await supabase
         .from('customers')
-        .update({ full_name: cleanName, phone: cleanPhone })
+        .update({ full_name: cleanName, phone_whatsapp: cleanPhone })
         .eq('id', existing.id)
         .eq('workshop_id', workshopId)
       return existing.id
@@ -127,7 +130,7 @@ export async function ensureCustomer(customer: {
       .from('customers')
       .select('id')
       .eq('workshop_id', workshopId)
-      .eq('phone', cleanPhone)
+      .eq('phone_whatsapp', cleanPhone)
       .maybeSingle()
 
     if (byPhone) {
@@ -144,7 +147,7 @@ export async function ensureCustomer(customer: {
     .from('customers')
     .insert({
       full_name: cleanName,
-      phone: cleanPhone,
+      phone_whatsapp: cleanPhone,
       workshop_id: workshopId,
     })
     .select('id')
@@ -157,15 +160,15 @@ export async function ensureCustomer(customer: {
 export async function ensureMotorcycle(motorcycle: {
   id?: string
   customer_id: string
-  plate: string
-  make: string
+  license_plate: string
+  brand: string
   model: string
   year?: number
 }) {
   const supabase = createServerSupabaseClient()
   const { workshopId } = await getWorkshopContext()
 
-  const normalizedPlate = motorcycle.plate.trim().toUpperCase()
+  const normalizedPlate = normalizePlate(motorcycle.license_plate)
 
   if (motorcycle.id) {
     const { data: existing } = await supabase
@@ -180,8 +183,8 @@ export async function ensureMotorcycle(motorcycle: {
         .from('motorcycles')
         .update({
           customer_id: motorcycle.customer_id,
-          plate: normalizedPlate,
-          make: motorcycle.make.trim(),
+          license_plate: normalizedPlate,
+          brand: motorcycle.brand.trim(),
           model: motorcycle.model.trim(),
           year: motorcycle.year ?? null,
         })
@@ -195,7 +198,7 @@ export async function ensureMotorcycle(motorcycle: {
     .from('motorcycles')
     .select('id')
     .eq('workshop_id', workshopId)
-    .eq('plate', normalizedPlate)
+    .eq('license_plate', normalizedPlate)
     .maybeSingle()
 
   if (byPlate) {
@@ -203,7 +206,7 @@ export async function ensureMotorcycle(motorcycle: {
       .from('motorcycles')
       .update({
         customer_id: motorcycle.customer_id,
-        make: motorcycle.make.trim(),
+        brand: motorcycle.brand.trim(),
         model: motorcycle.model.trim(),
         year: motorcycle.year ?? null,
       })
@@ -216,8 +219,8 @@ export async function ensureMotorcycle(motorcycle: {
     .from('motorcycles')
     .insert({
       customer_id: motorcycle.customer_id,
-      plate: normalizedPlate,
-      make: motorcycle.make.trim(),
+      license_plate: normalizedPlate,
+      brand: motorcycle.brand.trim(),
       model: motorcycle.model.trim(),
       year: motorcycle.year ?? null,
       workshop_id: workshopId,
@@ -238,10 +241,9 @@ const FUEL_LABELS: Record<string, string> = {
 }
 
 export async function createWorkOrder(payload: {
-  customer_id: string
   motorcycle_id: string
-  mileage: number
-  description?: string
+  mileage_in: number
+  customer_notes?: string
   fuel_level: string
   media_urls: string[]
   signature_url?: string | null
@@ -250,24 +252,17 @@ export async function createWorkOrder(payload: {
   const { workshopId, userId } = await getWorkshopContext()
 
   const fuelLabel = FUEL_LABELS[payload.fuel_level] || payload.fuel_level
-  const trimmedDesc = payload.description?.trim() || ''
-  const fullDescription = [
-    `Combustible al ingreso: ${fuelLabel}`,
-    trimmedDesc ? trimmedDesc : null,
-  ]
-    .filter(Boolean)
-    .join('\n')
+  const trimmedNotes = payload.customer_notes?.trim() || ''
 
   const { data: order, error } = await supabase
-    .from('workorders')
+    .from('work_orders')
     .insert({
       workshop_id: workshopId,
-      customer_id: payload.customer_id,
       motorcycle_id: payload.motorcycle_id,
-      mileage: payload.mileage,
-      description: fullDescription,
+      mileage_in: payload.mileage_in,
+      fuel_level: payload.fuel_level,
+      customer_notes: trimmedNotes || null,
       status: 'received',
-      total_amount: 0,
     })
     .select()
     .single()
@@ -281,10 +276,10 @@ export async function createWorkOrder(payload: {
     ...(payload.signature_url ? [payload.signature_url] : []),
   ]
 
-  const timelineDesc = [
+  const timelineComment = [
     `Ingreso registrado (Combustible: ${fuelLabel}).`,
     payload.signature_url ? 'Firma digital de conformidad guardada.' : null,
-    trimmedDesc ? `Notas: ${trimmedDesc}` : null,
+    trimmedNotes ? `Notas: ${trimmedNotes}` : null,
   ]
     .filter(Boolean)
     .join(' ')
@@ -292,11 +287,11 @@ export async function createWorkOrder(payload: {
   const { error: timelineError } = await supabase
     .from('order_timeline_events')
     .insert({
-      workorder_id: order.id,
+      work_order_id: order.id,
       workshop_id: workshopId,
-      status: 'received',
-      description: timelineDesc,
-      media_urls: allMedia.length > 0 ? allMedia : null,
+      status_snapshot: 'received',
+      public_comment: timelineComment,
+      media_urls: allMedia,
       created_by: userId,
     })
 

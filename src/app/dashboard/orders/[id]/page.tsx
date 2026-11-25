@@ -32,16 +32,18 @@ export default async function OrderDetailPage({ params }: PageProps) {
     .eq('id', user.id)
     .single()
 
-  if (!profile) {
+  if (!profile || !profile.workshop_id) {
     redirect('/login')
   }
 
   const { data: order, error } = await supabase
-    .from('workorders')
+    .from('work_orders')
     .select(`
       *,
-      customers (*),
-      motorcycles (*),
+      motorcycles (
+        *,
+        customers (*)
+      ),
       order_items (*),
       order_timeline_events (*)
     `)
@@ -54,21 +56,41 @@ export default async function OrderDetailPage({ params }: PageProps) {
     return notFound()
   }
 
-  const { data: workshop } = await supabase
-    .from('workshops')
-    .select('name, slug, settings')
-    .eq('id', order.workshop_id)
-    .single()
+  const [{ data: workshop }, { data: recentItems }] = await Promise.all([
+    supabase
+      .from('workshops')
+      .select('name, slug')
+      .eq('id', order.workshop_id)
+      .single(),
+    supabase
+      .from('order_items')
+      .select('id, description, type, unit_price')
+      .eq('workshop_id', order.workshop_id)
+      .order('description', { ascending: true }),
+  ])
 
-  const catalogItems: CatalogTemplateItem[] = Array.isArray((workshop?.settings as any)?.catalog)
-    ? (workshop?.settings as any).catalog
-    : []
+  const seen = new Set<string>()
+  const catalogItems: CatalogTemplateItem[] = []
+  for (const item of recentItems || []) {
+    const key = `${item.type}:${item.description.trim().toLowerCase()}`
+    if (seen.has(key)) continue
+    seen.add(key)
+    catalogItems.push({
+      id: item.id,
+      name: item.description,
+      type: item.type,
+      default_price: Number(item.unit_price ?? 0),
+    })
+  }
 
   const timeline =
     order.order_timeline_events?.sort(
-      (a: any, b: any) =>
-        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      (a, b) =>
+        new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime()
     ) || []
+
+  const motorcycle = order.motorcycles
+  const customer = motorcycle?.customers
 
   return (
     <div className="flex flex-col gap-6 p-4 md:p-6">
@@ -80,33 +102,37 @@ export default async function OrderDetailPage({ params }: PageProps) {
           </Link>
         </Button>
 
-        <div className="flex items-center gap-2">
-          <CopyTrackerButton token={order.tracking_token} />
-          <Button asChild variant="outline" size="sm" className="gap-1.5">
-            <Link href={`/track/${order.tracking_token}`} target="_blank">
-              <span>Ver Live Tracker</span>
-              <ExternalLink className="w-3.5 h-3.5" />
-            </Link>
-          </Button>
-        </div>
+        {order.tracking_token && (
+          <div className="flex items-center gap-2">
+            <CopyTrackerButton token={order.tracking_token} />
+            <Button asChild variant="outline" size="sm" className="gap-1.5">
+              <Link href={`/track/${order.tracking_token}`} target="_blank">
+                <span>Ver Live Tracker</span>
+                <ExternalLink className="w-3.5 h-3.5" />
+              </Link>
+            </Button>
+          </div>
+        )}
       </div>
 
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl md:text-3xl font-bold tracking-tight">
-            Orden #{order.id.slice(0, 8)}
+            Orden #{order.order_number ?? order.id.slice(0, 8)}
           </h1>
-          <p className="text-muted-foreground text-sm">
-            Registrada el {new Date(order.created_at).toLocaleDateString('es-ES')}
-          </p>
+          {order.created_at && (
+            <p className="text-muted-foreground text-sm">
+              Registrada el {new Date(order.created_at).toLocaleDateString('es-ES')}
+            </p>
+          )}
         </div>
         <StatusSelector
           orderId={order.id}
-          currentStatus={order.status}
-          trackingToken={order.tracking_token}
-          customerName={order.customers?.full_name || 'Cliente'}
-          customerPhone={order.customers?.phone || ''}
-          plate={order.motorcycles?.plate || 'SIN-PLACA'}
+          currentStatus={order.status || 'received'}
+          trackingToken={order.tracking_token || ''}
+          customerName={customer?.full_name || 'Cliente'}
+          customerPhone={customer?.phone_whatsapp || ''}
+          plate={motorcycle?.license_plate || 'SIN-PLACA'}
           workshopName={workshop?.name || 'Taller'}
           workshopSlug={workshop?.slug || ''}
         />
@@ -122,16 +148,16 @@ export default async function OrderDetailPage({ params }: PageProps) {
             <CardContent className="space-y-4">
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Nombre</p>
-                <p className="text-lg font-semibold">{order.customers?.full_name}</p>
+                <p className="text-lg font-semibold">{customer?.full_name || 'Sin cliente'}</p>
               </div>
               <div>
-                <p className="text-sm font-medium text-muted-foreground">Teléfono</p>
-                <p>{order.customers?.phone || 'No registrado'}</p>
+                <p className="text-sm font-medium text-muted-foreground">Teléfono / WhatsApp</p>
+                <p>{customer?.phone_whatsapp || 'No registrado'}</p>
               </div>
-              {order.customers?.email && (
+              {customer?.email && (
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">Email</p>
-                  <p>{order.customers.email}</p>
+                  <p>{customer.email}</p>
                 </div>
               )}
             </CardContent>
@@ -146,36 +172,30 @@ export default async function OrderDetailPage({ params }: PageProps) {
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">Placa</p>
                   <Badge variant="outline" className="text-lg font-mono px-3 py-1">
-                    {order.motorcycles?.plate}
+                    {motorcycle?.license_plate || 'SIN-PLACA'}
                   </Badge>
                 </div>
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">Kilometraje</p>
-                  <p className="font-semibold">{order.mileage?.toLocaleString() ?? 0} km</p>
+                  <p className="font-semibold">{order.mileage_in?.toLocaleString() ?? 0} km</p>
                 </div>
               </div>
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Marca / Modelo</p>
                 <p className="text-lg font-semibold">
-                  {order.motorcycles?.make} {order.motorcycles?.model}
+                  {motorcycle?.brand} {motorcycle?.model} {motorcycle?.year ? `(${motorcycle.year})` : ''}
                 </p>
               </div>
-              {order.motorcycles?.color && (
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">Color</p>
-                  <p>{order.motorcycles.color}</p>
-                </div>
-              )}
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg">Descripción Inicial</CardTitle>
+              <CardTitle className="text-lg">Notas de Ingreso</CardTitle>
             </CardHeader>
             <CardContent>
               <p className="text-sm text-muted-foreground italic whitespace-pre-wrap">
-                {order.description || 'Sin descripción'}
+                {order.customer_notes || 'Sin descripción'}
               </p>
             </CardContent>
           </Card>

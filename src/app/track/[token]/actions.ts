@@ -24,7 +24,7 @@ export async function updateItemApprovalStatus(
 
     // 1. Buscar la orden por tracking_token para verificar estado y tenant
     const { data: order, error: orderError } = await supabase
-      .from('workorders')
+      .from('work_orders')
       .select('id, status, workshop_id, workshops(slug)')
       .eq('tracking_token', trackingToken)
       .maybeSingle()
@@ -42,12 +42,13 @@ export async function updateItemApprovalStatus(
       }
     }
 
-    // 3. Actualizar el estado del ítem validando workorder_id y workshop_id
+    // 3. Actualizar la aprobación del ítem validando work_order_id y workshop_id
+    const approvedValue = status === 'approved'
     const { data: updatedItem, error: updateError } = await supabase
       .from('order_items')
-      .update({ status })
+      .update({ approved: approvedValue })
       .eq('id', itemId)
-      .eq('workorder_id', order.id)
+      .eq('work_order_id', order.id)
       .eq('workshop_id', order.workshop_id)
       .select('id')
       .maybeSingle()
@@ -59,11 +60,11 @@ export async function updateItemApprovalStatus(
       }
     }
 
-    // 4. Recalcular workorders.total_amount excluyendo ítems rechazados (en línea con Bloque A)
+    // 4. Recalcular el total activo excluyendo ítems rechazados (approved === false)
     const { data: items, error: itemsError } = await supabase
       .from('order_items')
-      .select('quantity, unit_price, status')
-      .eq('workorder_id', order.id)
+      .select('quantity, unit_price, approved')
+      .eq('work_order_id', order.id)
       .eq('workshop_id', order.workshop_id)
 
     if (itemsError) {
@@ -74,23 +75,22 @@ export async function updateItemApprovalStatus(
     }
 
     const total = (items || []).reduce((acc, item) => {
-      if (item.status === 'rejected') return acc
-      return acc + item.quantity * item.unit_price
+      if (item.approved === false) return acc
+      return acc + Number(item.quantity ?? 1) * Number(item.unit_price ?? 0)
     }, 0)
 
-    const { error: totalError } = await supabase
-      .from('workorders')
+    const { error: touchError } = await supabase
+      .from('work_orders')
       .update({
-        total_amount: total,
         updated_at: new Date().toISOString(),
       })
       .eq('id', order.id)
       .eq('workshop_id', order.workshop_id)
 
-    if (totalError) {
+    if (touchError) {
       return {
         success: false,
-        error: 'Se actualizó el ítem, pero no se pudo actualizar el total de la orden.',
+        error: 'Se actualizó el ítem, pero no se pudo actualizar la fecha de la orden.',
       }
     }
 

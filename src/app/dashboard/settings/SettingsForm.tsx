@@ -27,7 +27,7 @@ import { updateWorkshopSettings } from './actions'
 
 const formSchema = z.object({
   name: z.string().min(1, 'El nombre es requerido'),
-  phone: z.string().min(1, 'El WhatsApp es requerido'),
+  phone_whatsapp: z.string().min(1, 'El WhatsApp es requerido'),
   address: z.string().min(1, 'La dirección es requerida'),
   primary_color: z.string().regex(/^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/, 'Color inválido'),
   logo_url: z.string().nullable(),
@@ -39,10 +39,10 @@ interface SettingsFormProps {
   workshop: {
     id: string
     name: string
-    phone: string | null
+    phone_whatsapp: string | null
     address: string | null
     logo_url: string | null
-    settings: any
+    primary_color: string | null
   }
 }
 
@@ -65,9 +65,9 @@ export function SettingsForm({ workshop }: SettingsFormProps) {
     resolver: zodResolver(formSchema),
     defaultValues: {
       name: workshop.name,
-      phone: workshop.phone || '',
+      phone_whatsapp: workshop.phone_whatsapp || '',
       address: workshop.address || '',
-      primary_color: workshop.settings?.primary_color || '#3b82f6',
+      primary_color: workshop.primary_color || '#EA580C',
       logo_url: workshop.logo_url,
     },
   })
@@ -129,7 +129,7 @@ export function SettingsForm({ workshop }: SettingsFormProps) {
     try {
       const result = await updateWorkshopSettings(workshop.id, {
         name: values.name,
-        phone: values.phone,
+        phone_whatsapp: values.phone_whatsapp,
         address: values.address,
         logo_url: values.logo_url,
         primary_color: values.primary_color,
@@ -190,18 +190,20 @@ export function SettingsForm({ workshop }: SettingsFormProps) {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="phone">WhatsApp de Contacto *</Label>
+                <Label htmlFor="phone_whatsapp">WhatsApp de Contacto *</Label>
                 <div className="relative">
                   <Phone className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
                   <Input
-                    id="phone"
+                    id="phone_whatsapp"
                     className="pl-9"
-                    {...register('phone')}
+                    {...register('phone_whatsapp')}
                     placeholder="Ej. +57 300 123 4567"
                     disabled={isSubmitting}
                   />
                 </div>
-                {errors.phone && <p className="text-xs text-destructive">{errors.phone.message}</p>}
+                {errors.phone_whatsapp && (
+                  <p className="text-xs text-destructive">{errors.phone_whatsapp.message}</p>
+                )}
               </div>
 
               <div className="space-y-2">

@@ -3,19 +3,10 @@
 import { createServerSupabaseClient } from '@/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { Database } from '@/types/database.types'
+import { getWorkOrderStatusLabel } from '@/lib/workorder-status'
 
-type WorkOrderStatus = Database['public']['Enums']['workorder_status']
+type WorkOrderStatus = Database['public']['Enums']['order_status']
 type ItemType = Database['public']['Enums']['item_type']
-
-const STATUS_LABELS: Record<WorkOrderStatus, string> = {
-  received: 'Recibida',
-  diagnosing: 'Diagnosticando',
-  waiting_approval: 'Esperando Aprobación',
-  in_repair: 'En Reparación',
-  quality_check: 'Control de Calidad',
-  ready_for_pickup: 'Lista para Entrega',
-  delivered: 'Entregada',
-}
 
 async function getWorkshopId() {
   const supabase = createServerSupabaseClient()
@@ -30,26 +21,15 @@ async function getWorkshopId() {
     .eq('id', user.id)
     .single()
 
-  if (!profile) throw new Error('Perfil no encontrado')
+  if (!profile || !profile.workshop_id) throw new Error('Perfil no encontrado')
   return { workshopId: profile.workshop_id, userId: user.id }
 }
 
-async function syncOrderTotal(orderId: string, workshopId: string) {
+async function touchOrderUpdatedAt(orderId: string, workshopId: string) {
   const supabase = createServerSupabaseClient()
-  const { data: items } = await supabase
-    .from('order_items')
-    .select('quantity, unit_price, status')
-    .eq('workorder_id', orderId)
-    .eq('workshop_id', workshopId)
-
-  const total = (items || []).reduce((acc, item) => {
-    if (item.status === 'rejected') return acc
-    return acc + item.quantity * item.unit_price
-  }, 0)
-
   await supabase
-    .from('workorders')
-    .update({ total_amount: total, updated_at: new Date().toISOString() })
+    .from('work_orders')
+    .update({ updated_at: new Date().toISOString() })
     .eq('id', orderId)
     .eq('workshop_id', workshopId)
 }
@@ -63,7 +43,7 @@ export async function updateOrderStatus(
   const { workshopId, userId } = await getWorkshopId()
 
   const { data: updatedOrder, error: updateError } = await supabase
-    .from('workorders')
+    .from('work_orders')
     .update({ status, updated_at: new Date().toISOString() })
     .eq('id', orderId)
     .eq('workshop_id', workshopId)
@@ -72,14 +52,14 @@ export async function updateOrderStatus(
 
   if (updateError) throw new Error(updateError.message)
 
-  const statusLabel = STATUS_LABELS[status] || status
+  const statusLabel = getWorkOrderStatusLabel(status)
   const { error: timelineError } = await supabase
     .from('order_timeline_events')
     .insert({
-      workorder_id: orderId,
+      work_order_id: orderId,
       workshop_id: workshopId,
-      status,
-      description: description || `Estado actualizado a: ${statusLabel}`,
+      status_snapshot: status,
+      public_comment: description || `Estado actualizado a: ${statusLabel}`,
       created_by: userId,
     })
 
@@ -107,7 +87,7 @@ export async function addOrderItem(
   const { workshopId } = await getWorkshopId()
 
   const { data: order } = await supabase
-    .from('workorders')
+    .from('work_orders')
     .select('tracking_token')
     .eq('id', orderId)
     .eq('workshop_id', workshopId)
@@ -120,18 +100,21 @@ export async function addOrderItem(
     description: payload.description.trim(),
     quantity: payload.quantity,
     unit_price: payload.unit_price,
-    workorder_id: orderId,
+    work_order_id: orderId,
     workshop_id: workshopId,
-    status: 'pending',
+    approved: null,
   })
 
   if (error) throw new Error(error.message)
 
-  await syncOrderTotal(orderId, workshopId)
+  await touchOrderUpdatedAt(orderId, workshopId)
 
   revalidatePath(`/dashboard/orders/${orderId}`)
   revalidatePath('/dashboard/orders')
-  revalidatePath(`/track/${order.tracking_token}`)
+  revalidatePath('/dashboard/catalog')
+  if (order.tracking_token) {
+    revalidatePath(`/track/${order.tracking_token}`)
+  }
 }
 
 export async function deleteOrderItem(itemId: string, orderId: string) {
@@ -139,7 +122,7 @@ export async function deleteOrderItem(itemId: string, orderId: string) {
   const { workshopId } = await getWorkshopId()
 
   const { data: order } = await supabase
-    .from('workorders')
+    .from('work_orders')
     .select('tracking_token')
     .eq('id', orderId)
     .eq('workshop_id', workshopId)
@@ -149,12 +132,12 @@ export async function deleteOrderItem(itemId: string, orderId: string) {
     .from('order_items')
     .delete()
     .eq('id', itemId)
-    .eq('workorder_id', orderId)
+    .eq('work_order_id', orderId)
     .eq('workshop_id', workshopId)
 
   if (error) throw new Error(error.message)
 
-  await syncOrderTotal(orderId, workshopId)
+  await touchOrderUpdatedAt(orderId, workshopId)
 
   revalidatePath(`/dashboard/orders/${orderId}`)
   revalidatePath('/dashboard/orders')

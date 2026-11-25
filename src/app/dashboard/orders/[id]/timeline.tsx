@@ -1,18 +1,30 @@
 import { Database } from '@/types/database.types'
 import { Badge } from '@/components/ui/badge'
-import { Circle, CheckCircle2, Clock, Wrench, Search, PackageCheck, Truck, ImageIcon } from 'lucide-react'
+import { parseMediaUrls } from '@/lib/workorder-status'
+import {
+  Circle,
+  CheckCircle2,
+  Clock,
+  Wrench,
+  Search,
+  PackageCheck,
+  Truck,
+  XCircle,
+  ImageIcon,
+} from 'lucide-react'
 
 type Event = Database['public']['Tables']['order_timeline_events']['Row']
-type Status = Database['public']['Enums']['workorder_status']
+type Status = Database['public']['Enums']['order_status']
 
 const statusConfig: Record<Status, { icon: any; color: string; label: string }> = {
   received: { icon: Clock, color: 'text-slate-500', label: 'Recibida' },
   diagnosing: { icon: Search, color: 'text-blue-500', label: 'Diagnosticando' },
   waiting_approval: { icon: PackageCheck, color: 'text-yellow-500', label: 'Esperando Aprobación' },
-  in_repair: { icon: Wrench, color: 'text-orange-500', label: 'En Reparación' },
-  quality_check: { icon: CheckCircle2, color: 'text-purple-500', label: 'Control de Calidad' },
-  ready_for_pickup: { icon: PackageCheck, color: 'text-green-500', label: 'Lista para Entrega' },
+  in_progress: { icon: Wrench, color: 'text-orange-500', label: 'En Reparación' },
+  testing: { icon: CheckCircle2, color: 'text-purple-500', label: 'Control de Calidad' },
+  ready: { icon: PackageCheck, color: 'text-green-500', label: 'Lista para Entrega' },
   delivered: { icon: Truck, color: 'text-emerald-700', label: 'Entregada' },
+  cancelled: { icon: XCircle, color: 'text-red-500', label: 'Cancelada' },
 }
 
 export function Timeline({ events }: { events: Event[] }) {
@@ -27,13 +39,14 @@ export function Timeline({ events }: { events: Event[] }) {
   return (
     <div className="relative space-y-6 before:absolute before:left-[19px] before:top-2 before:bottom-2 before:w-0.5 before:bg-muted">
       {events.map((event) => {
-        const Config = statusConfig[event.status] || {
+        const snapshot = event.status_snapshot
+        const Config = (snapshot && statusConfig[snapshot]) || {
           icon: Circle,
           color: 'text-muted-foreground',
-          label: event.status,
+          label: snapshot || 'Actualización',
         }
         const Icon = Config.icon
-        const mediaUrls = event.media_urls || []
+        const mediaUrls = parseMediaUrls(event.media_urls)
 
         return (
           <div key={event.id} className="relative pl-12">
@@ -48,19 +61,21 @@ export function Timeline({ events }: { events: Event[] }) {
                 <Badge variant="outline" className="text-[10px] font-bold">
                   {Config.label}
                 </Badge>
-                <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
-                  {new Date(event.created_at).toLocaleString('es-ES', {
-                    day: '2-digit',
-                    month: 'short',
-                    hour: '2-digit',
-                    minute: '2-digit',
-                  })}
-                </span>
+                {event.created_at && (
+                  <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
+                    {new Date(event.created_at).toLocaleString('es-ES', {
+                      day: '2-digit',
+                      month: 'short',
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    })}
+                  </span>
+                )}
               </div>
 
-              {event.description && (
+              {event.public_comment && (
                 <p className="text-sm text-slate-600 leading-relaxed whitespace-pre-wrap">
-                  {event.description}
+                  {event.public_comment}
                 </p>
               )}
 

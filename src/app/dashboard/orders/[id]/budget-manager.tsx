@@ -11,30 +11,38 @@ import { Database } from '@/types/database.types'
 import { Plus, Trash2, PenTool, Settings, Loader2, AlertCircle, Check, X, Clock } from 'lucide-react'
 
 type Item = Database['public']['Tables']['order_items']['Row']
+type ItemType = Database['public']['Enums']['item_type']
 
 export interface CatalogTemplateItem {
   id: string
   name: string
-  type: 'part' | 'labor'
+  type: ItemType
   default_price: number
 }
 
-const ITEM_STATUS_CONFIG: Record<string, { label: string; className: string; icon: any }> = {
-  approved: {
-    label: 'Aprobado',
-    className: 'bg-emerald-100 text-emerald-800 border-emerald-200',
-    icon: Check,
-  },
-  rejected: {
-    label: 'Rechazado',
-    className: 'bg-red-100 text-red-800 border-red-200',
-    icon: X,
-  },
-  pending: {
+function getApprovalConfig(approved: boolean | null) {
+  if (approved === true) {
+    return {
+      key: 'approved',
+      label: 'Aprobado',
+      className: 'bg-emerald-100 text-emerald-800 border-emerald-200',
+      icon: Check,
+    }
+  }
+  if (approved === false) {
+    return {
+      key: 'rejected',
+      label: 'Rechazado',
+      className: 'bg-red-100 text-red-800 border-red-200',
+      icon: X,
+    }
+  }
+  return {
+    key: 'pending',
     label: 'Pendiente',
     className: 'bg-amber-100 text-amber-800 border-amber-200',
     icon: Clock,
-  },
+  }
 }
 
 export function BudgetManager({
@@ -52,7 +60,7 @@ export function BudgetManager({
   const [error, setError] = useState<string | null>(null)
 
   const [description, setDescription] = useState('')
-  const [type, setType] = useState<'part' | 'labor'>('part')
+  const [type, setType] = useState<ItemType>('spare_part')
   const [quantity, setQuantity] = useState(1)
   const [unitPrice, setUnitPrice] = useState(0)
 
@@ -105,10 +113,10 @@ export function BudgetManager({
     }
   }
 
-  const totalActive = items.reduce(
-    (acc, item) => (item.status === 'rejected' ? acc : acc + item.quantity * item.unit_price),
-    0
-  )
+  const totalActive = items.reduce((acc, item) => {
+    if (item.approved === false) return acc
+    return acc + Number(item.quantity ?? 1) * Number(item.unit_price ?? 0)
+  }, 0)
 
   return (
     <Card className="overflow-hidden border-2">
@@ -136,7 +144,7 @@ export function BudgetManager({
           {catalogItems.length > 0 && (
             <div className="space-y-1.5">
               <Label htmlFor="catalog-quick" className="text-xs font-bold uppercase text-slate-500">
-                Cargar desde Catálogo (Opcional)
+                Cargar desde Historial del Taller (Opcional)
               </Label>
               <select
                 id="catalog-quick"
@@ -148,7 +156,7 @@ export function BudgetManager({
                 }}
                 className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
               >
-                <option value="">-- Seleccionar repuesto o servicio del catálogo --</option>
+                <option value="">-- Seleccionar repuesto o servicio frecuente --</option>
                 {catalogItems.map((item) => (
                   <option key={item.id} value={item.id}>
                     {item.name} ({item.type === 'labor' ? 'Mano de Obra' : 'Repuesto'}) - $
@@ -183,10 +191,10 @@ export function BudgetManager({
                   id="type"
                   value={type}
                   disabled={isAdding}
-                  onChange={(e) => setType(e.target.value as 'part' | 'labor')}
+                  onChange={(e) => setType(e.target.value as ItemType)}
                   className="flex h-11 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:ring-2 focus:ring-primary appearance-none"
                 >
-                  <option value="part">Repuesto</option>
+                  <option value="spare_part">Repuesto</option>
                   <option value="labor">Mano de Obra</option>
                 </select>
                 <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
@@ -253,10 +261,12 @@ export function BudgetManager({
             </thead>
             <tbody className="divide-y divide-muted/30">
               {items.map((item) => {
-                const statusCfg = ITEM_STATUS_CONFIG[item.status] || ITEM_STATUS_CONFIG.pending
+                const statusCfg = getApprovalConfig(item.approved)
                 const StatusIcon = statusCfg.icon
-                const isRejected = item.status === 'rejected'
+                const isRejected = item.approved === false
                 const isRowDeleting = deletingId === item.id
+                const qty = Number(item.quantity ?? 1)
+                const price = Number(item.unit_price ?? 0)
 
                 return (
                   <tr
@@ -284,12 +294,12 @@ export function BudgetManager({
                         {statusCfg.label}
                       </Badge>
                     </td>
-                    <td className="px-4 py-4 text-center font-medium">{item.quantity}</td>
+                    <td className="px-4 py-4 text-center font-medium">{qty}</td>
                     <td className="px-4 py-4 text-right text-muted-foreground">
-                      ${item.unit_price.toLocaleString('es-CL')}
+                      ${price.toLocaleString('es-CL')}
                     </td>
                     <td className="px-4 py-4 text-right font-bold text-slate-900">
-                      ${(item.quantity * item.unit_price).toLocaleString('es-CL')}
+                      ${(qty * price).toLocaleString('es-CL')}
                     </td>
                     <td className="px-4 py-4 text-right">
                       {confirmDeleteId === item.id ? (
