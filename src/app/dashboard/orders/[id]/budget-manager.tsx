@@ -25,7 +25,7 @@ function getApprovalConfig(approved: boolean | null) {
     return {
       key: 'approved',
       label: 'Aprobado',
-      className: 'bg-emerald-100 text-emerald-800 border-emerald-200',
+      className: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30',
       icon: Check,
     }
   }
@@ -33,17 +33,20 @@ function getApprovalConfig(approved: boolean | null) {
     return {
       key: 'rejected',
       label: 'Rechazado',
-      className: 'bg-red-100 text-red-800 border-red-200',
+      className: 'bg-rose-500/15 text-rose-300 border-rose-500/30',
       icon: X,
     }
   }
   return {
     key: 'pending',
     label: 'Pendiente',
-    className: 'bg-amber-100 text-amber-800 border-amber-200',
+    className: 'bg-amber-500/15 text-amber-300 border-amber-500/30',
     icon: Clock,
   }
 }
+
+const DARK_INPUT_CLASS =
+  'h-11 rounded-xl border-white/10 bg-[#0B0D13] text-white placeholder:text-slate-500 focus-visible:border-orange-500/60 focus-visible:ring-orange-500/30 focus-visible:ring-offset-0 [color-scheme:dark]'
 
 export function BudgetManager({
   orderId,
@@ -119,31 +122,39 @@ export function BudgetManager({
   }, 0)
 
   return (
-    <Card className="overflow-hidden border-2">
-      <CardHeader className="bg-muted/30 border-b flex flex-row items-center justify-between py-4">
-        <CardTitle className="text-xl flex items-center gap-2">
-          <PenTool className="w-5 h-5 text-primary" />
+    <Card className="min-w-0 overflow-hidden rounded-2xl border border-white/10 bg-[#101218] text-slate-100 shadow-none">
+      <CardHeader className="bg-[#0B0D13] border-b border-white/10 flex flex-row items-center justify-between gap-4 py-4">
+        <CardTitle className="text-lg sm:text-xl font-bold text-white flex items-center gap-2">
+          <PenTool className="w-5 h-5 text-orange-400 shrink-0" />
           Presupuesto y Repuestos
         </CardTitle>
-        <div className="text-right">
-          <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
+        <div className="text-right shrink-0">
+          <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
             Total Activo
           </p>
-          <p className="text-2xl font-black text-primary">${totalActive.toLocaleString('es-CL')}</p>
+          <p className="text-2xl font-mono font-black tabular-nums text-orange-400">
+            ${totalActive.toLocaleString('es-CL')}
+          </p>
         </div>
       </CardHeader>
       <CardContent className="p-0">
-        <form onSubmit={handleAddItem} className="p-4 grid gap-4 bg-muted/10 border-b">
+        <form onSubmit={handleAddItem} className="p-4 sm:p-5 grid gap-4 bg-[#0B0D13]/50 border-b border-white/10">
           {error && (
-            <div className="bg-destructive/10 border border-destructive/20 text-destructive text-xs p-3 rounded-lg flex items-center gap-2">
-              <AlertCircle className="w-4 h-4 shrink-0" />
+            <div
+              role="alert"
+              className="bg-rose-500/10 border border-rose-500/30 text-rose-200 text-xs p-3 rounded-xl flex items-center gap-2"
+            >
+              <AlertCircle className="w-4 h-4 shrink-0 text-rose-400" />
               <span className="font-medium">{error}</span>
             </div>
           )}
 
           {catalogItems.length > 0 && (
             <div className="space-y-1.5">
-              <Label htmlFor="catalog-quick" className="text-xs font-bold uppercase text-slate-500">
+              <Label
+                htmlFor="catalog-quick"
+                className="text-[11px] font-bold uppercase tracking-wider text-slate-400"
+              >
                 Cargar desde Historial del Taller (Opcional)
               </Label>
               <select
@@ -154,11 +165,13 @@ export function BudgetManager({
                   handleSelectCatalog(e.target.value)
                   e.target.value = ''
                 }}
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                className="flex h-10 w-full rounded-xl border border-white/10 bg-[#0B0D13] px-3 py-2 text-sm text-white focus:outline-none focus:border-orange-500/60 focus:ring-2 focus:ring-orange-500/25 [color-scheme:dark]"
               >
-                <option value="">-- Seleccionar repuesto o servicio frecuente --</option>
+                <option value="" className="bg-[#101218] text-slate-400">
+                  -- Seleccionar repuesto o servicio frecuente --
+                </option>
                 {catalogItems.map((item) => (
-                  <option key={item.id} value={item.id}>
+                  <option key={item.id} value={item.id} className="bg-[#101218] text-white">
                     {item.name} ({item.type === 'labor' ? 'Mano de Obra' : 'Repuesto'}) - $
                     {item.default_price.toLocaleString('es-CL')}
                   </option>
@@ -169,7 +182,7 @@ export function BudgetManager({
 
           <div className="grid grid-cols-1 sm:grid-cols-6 gap-3">
             <div className="sm:col-span-4 space-y-1.5">
-              <Label htmlFor="desc" className="text-xs font-bold uppercase">
+              <Label htmlFor="desc" className="text-xs font-bold uppercase tracking-wider text-slate-300">
                 Descripción del Trabajo o Repuesto
               </Label>
               <Input
@@ -179,33 +192,30 @@ export function BudgetManager({
                 placeholder="Ej: Kit de arrastre, Cambio de aceite..."
                 required
                 disabled={isAdding}
-                className="h-11"
+                className={DARK_INPUT_CLASS}
               />
             </div>
             <div className="sm:col-span-2 space-y-1.5">
-              <Label htmlFor="type" className="text-xs font-bold uppercase">
+              <Label htmlFor="type" className="text-xs font-bold uppercase tracking-wider text-slate-300">
                 Tipo
               </Label>
-              <div className="relative">
-                <select
-                  id="type"
-                  value={type}
-                  disabled={isAdding}
-                  onChange={(e) => setType(e.target.value as ItemType)}
-                  className="flex h-11 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:ring-2 focus:ring-primary appearance-none"
-                >
-                  <option value="spare_part">Repuesto</option>
-                  <option value="labor">Mano de Obra</option>
-                </select>
-                <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
-                  <svg className="w-4 h-4 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
-                  </svg>
-                </div>
-              </div>
+              <select
+                id="type"
+                value={type}
+                disabled={isAdding}
+                onChange={(e) => setType(e.target.value as ItemType)}
+                className="flex h-11 w-full rounded-xl border border-white/10 bg-[#0B0D13] px-3 py-2 text-sm text-white focus:outline-none focus:border-orange-500/60 focus:ring-2 focus:ring-orange-500/25 [color-scheme:dark]"
+              >
+                <option value="spare_part" className="bg-[#101218] text-white">
+                  Repuesto
+                </option>
+                <option value="labor" className="bg-[#101218] text-white">
+                  Mano de Obra
+                </option>
+              </select>
             </div>
             <div className="sm:col-span-2 space-y-1.5">
-              <Label htmlFor="qty" className="text-xs font-bold uppercase">
+              <Label htmlFor="qty" className="text-xs font-bold uppercase tracking-wider text-slate-300">
                 Cantidad
               </Label>
               <Input
@@ -216,11 +226,11 @@ export function BudgetManager({
                 min={1}
                 required
                 disabled={isAdding}
-                className="h-11"
+                className={`${DARK_INPUT_CLASS} font-mono tabular-nums`}
               />
             </div>
             <div className="sm:col-span-4 space-y-1.5">
-              <Label htmlFor="price" className="text-xs font-bold uppercase">
+              <Label htmlFor="price" className="text-xs font-bold uppercase tracking-wider text-slate-300">
                 Precio Unitario
               </Label>
               <Input
@@ -231,11 +241,15 @@ export function BudgetManager({
                 min={0}
                 required
                 disabled={isAdding}
-                className="h-11"
+                className={`${DARK_INPUT_CLASS} font-mono tabular-nums`}
               />
             </div>
           </div>
-          <Button type="submit" disabled={isAdding} className="h-11 font-bold">
+          <Button
+            type="submit"
+            disabled={isAdding}
+            className="h-11 rounded-xl bg-orange-500 hover:bg-orange-400 text-slate-950 font-bold shadow-[0_0_20px_rgba(249,115,22,0.25)]"
+          >
             {isAdding ? (
               <Loader2 className="w-4 h-4 mr-2 animate-spin" />
             ) : (
@@ -245,9 +259,9 @@ export function BudgetManager({
           </Button>
         </form>
 
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto [color-scheme:dark] [&::-webkit-scrollbar]:h-2 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-track]:bg-[#0B0D12] [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-white/15 hover:[&::-webkit-scrollbar-thumb]:bg-orange-500/40">
           <table className="w-full text-sm text-left">
-            <thead className="text-[10px] text-muted-foreground uppercase bg-muted/30 border-b">
+            <thead className="text-[10px] text-slate-400 uppercase tracking-wider bg-[#0B0D13] border-b border-white/10">
               <tr>
                 <th className="px-4 py-3 font-bold">Concepto</th>
                 <th className="px-2 py-3 font-bold text-center">Estado</th>
@@ -257,7 +271,7 @@ export function BudgetManager({
                 <th className="px-2 py-3"></th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-muted/30">
+            <tbody className="divide-y divide-white/[0.06]">
               {items.map((item) => {
                 const statusCfg = getApprovalConfig(item.approved)
                 const StatusIcon = statusCfg.icon
@@ -269,17 +283,23 @@ export function BudgetManager({
                 return (
                   <tr
                     key={item.id}
-                    className={`hover:bg-muted/5 transition-colors ${isRejected ? 'opacity-55 bg-slate-50/60' : ''}`}
+                    className={`hover:bg-white/[0.03] transition-colors ${
+                      isRejected ? 'opacity-60 bg-white/[0.02]' : ''
+                    }`}
                   >
                     <td className="px-4 py-3.5">
                       <div className="flex flex-col gap-1">
-                        <span className={`font-bold text-slate-700 ${isRejected ? 'line-through' : ''}`}>
+                        <span className={`font-bold text-white ${isRejected ? 'line-through text-slate-400' : ''}`}>
                           {item.description}
                         </span>
                         <div className="flex">
                           <Badge
-                            variant={item.type === 'labor' ? 'outline' : 'secondary'}
-                            className="text-[10px] h-4 px-1.5 font-bold uppercase"
+                            variant="outline"
+                            className={
+                              item.type === 'labor'
+                                ? 'text-[10px] min-h-4 px-1.5 py-0.5 whitespace-nowrap font-bold uppercase border-sky-500/30 bg-sky-500/15 text-sky-300'
+                                : 'text-[10px] min-h-4 px-1.5 py-0.5 whitespace-nowrap font-bold uppercase border-orange-500/30 bg-orange-500/15 text-orange-300'
+                            }
                           >
                             {item.type === 'labor' ? 'Mano de Obra' : 'Repuesto'}
                           </Badge>
@@ -292,11 +312,13 @@ export function BudgetManager({
                         {statusCfg.label}
                       </Badge>
                     </td>
-                    <td className="px-2 py-3.5 text-center font-medium">{qty}</td>
-                    <td className="px-3 py-3.5 text-right text-muted-foreground whitespace-nowrap">
+                    <td className="px-2 py-3.5 text-center font-mono tabular-nums font-medium text-slate-200">
+                      {qty}
+                    </td>
+                    <td className="px-3 py-3.5 text-right font-mono tabular-nums text-slate-400 whitespace-nowrap">
                       ${price.toLocaleString('es-CL')}
                     </td>
-                    <td className="px-3 py-3.5 text-right font-bold text-slate-900 whitespace-nowrap">
+                    <td className="px-3 py-3.5 text-right font-mono tabular-nums font-bold text-white whitespace-nowrap">
                       ${(qty * price).toLocaleString('es-CL')}
                     </td>
                     <td className="px-2 py-3.5 text-right">
@@ -308,7 +330,7 @@ export function BudgetManager({
                             size="sm"
                             disabled={isRowDeleting}
                             onClick={() => handleDelete(item.id)}
-                            className="h-7 px-2 text-xs"
+                            className="h-7 rounded-lg px-2 text-xs bg-rose-600 hover:bg-rose-500 text-white"
                           >
                             {isRowDeleting ? <Loader2 className="w-3 h-3 animate-spin" /> : 'Confirmar'}
                           </Button>
@@ -318,7 +340,7 @@ export function BudgetManager({
                             size="sm"
                             disabled={isRowDeleting}
                             onClick={() => setConfirmDeleteId(null)}
-                            className="h-7 px-2 text-xs"
+                            className="h-7 rounded-lg px-2 text-xs text-slate-300 hover:bg-white/[0.06] hover:text-white"
                           >
                             No
                           </Button>
@@ -331,7 +353,7 @@ export function BudgetManager({
                           aria-label="Eliminar ítem"
                           onClick={() => setConfirmDeleteId(item.id)}
                           disabled={isAdding || Boolean(deletingId)}
-                          className="h-8 w-8 text-destructive hover:bg-destructive/10"
+                          className="h-8 w-8 rounded-lg text-rose-400 hover:bg-rose-500/15 hover:text-rose-300"
                         >
                           <Trash2 className="w-4 h-4" />
                         </Button>
@@ -343,8 +365,8 @@ export function BudgetManager({
               {items.length === 0 && (
                 <tr>
                   <td colSpan={6} className="px-6 py-12 text-center">
-                    <div className="flex flex-col items-center gap-2 text-muted-foreground">
-                      <Settings className="w-8 h-8 opacity-20" />
+                    <div className="flex flex-col items-center gap-2 text-slate-400">
+                      <Settings className="w-8 h-8 text-slate-600" />
                       <p className="text-sm italic font-medium">
                         El presupuesto está vacío. Comienza agregando un ítem arriba.
                       </p>

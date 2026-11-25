@@ -20,6 +20,8 @@ import {
   AlertCircle,
   Loader2,
   Check,
+  PenTool,
+  RotateCcw,
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 
@@ -62,11 +64,18 @@ const PHOTO_LABELS: Record<string, string> = {
   dashboard: 'Tablero',
 }
 
+const DARK_INPUT_CLASS =
+  'h-10 rounded-xl border-white/10 bg-[#0B0D13] text-white placeholder:text-slate-500 focus-visible:border-orange-500/60 focus-visible:ring-orange-500/30 focus-visible:ring-offset-0 [color-scheme:dark]'
+
 export default function NewOrderPage() {
   const router = useRouter()
   const [isSearching, setIsSearching] = React.useState(false)
   const [isSubmitting, setIsSubmitting] = React.useState(false)
-  const [searchFeedback, setSearchFeedback] = React.useState<{ type: 'success' | 'info' | 'error'; message: string } | null>(null)
+  const [compressingKey, setCompressingKey] = React.useState<string | null>(null)
+  const [searchFeedback, setSearchFeedback] = React.useState<{
+    type: 'success' | 'info' | 'error'
+    message: string
+  } | null>(null)
   const [submitError, setSubmitError] = React.useState<string | null>(null)
   const [signatureError, setSignatureError] = React.useState<string | null>(null)
   const [foundCustomerId, setFoundCustomerId] = React.useState<string | undefined>(undefined)
@@ -158,6 +167,8 @@ export default function NewOrderPage() {
       fileType: 'image/webp',
     }
 
+    setCompressingKey(key)
+    setSubmitError(null)
     try {
       const compressedFile = await imageCompression(file, options)
       setPhotos((prev) => ({ ...prev, [key]: compressedFile }))
@@ -165,6 +176,8 @@ export default function NewOrderPage() {
     } catch (error) {
       console.error('Compression error:', error)
       setSubmitError('No se pudo comprimir una de las imágenes seleccionadas.')
+    } finally {
+      setCompressingKey(null)
     }
   }
 
@@ -233,43 +246,53 @@ export default function NewOrderPage() {
   }
 
   return (
-    <div className="container max-w-2xl mx-auto py-6 px-4 space-y-6">
+    <div className="container max-w-3xl mx-auto py-6 px-4 space-y-6">
       <div className="flex items-center justify-between gap-4">
-        <Button asChild variant="ghost" size="sm" className="-ml-2 text-slate-600">
-          <Link href="/dashboard/orders">
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Volver al tablero
-          </Link>
-        </Button>
+        <Link
+          href="/dashboard/orders"
+          className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-3.5 py-1.5 text-xs font-semibold text-slate-300 transition-all hover:border-orange-500/35 hover:bg-white/[0.08] hover:text-white"
+        >
+          <ArrowLeft className="w-3.5 h-3.5 text-orange-400" />
+          Volver al tablero
+        </Link>
       </div>
 
       <div>
-        <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Nueva Orden de Trabajo</h1>
-        <p className="text-muted-foreground text-sm">
-          Registra la recepción de la motocicleta, evidencia y firma de conformidad.
+        <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-white">
+          Nueva Orden de Trabajo
+        </h1>
+        <p className="text-slate-400 text-sm mt-1">
+          Registra la recepción de la motocicleta, evidencia WebP y firma de conformidad.
         </p>
       </div>
 
       {submitError && (
-        <div className="bg-destructive/10 border border-destructive/20 text-destructive text-sm p-4 rounded-xl flex items-center gap-3">
-          <AlertCircle className="w-5 h-5 shrink-0" />
+        <div
+          role="alert"
+          className="bg-rose-500/10 border border-rose-500/30 text-rose-200 text-sm p-4 rounded-xl flex items-center gap-3"
+        >
+          <AlertCircle className="w-5 h-5 shrink-0 text-rose-400" />
           <p className="font-medium">{submitError}</p>
         </div>
       )}
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
         {/* Paso 1: Búsqueda por Placa */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <Search className="w-5 h-5 text-primary" /> Vehículo y Cliente
+        <Card className="rounded-2xl border border-white/10 bg-[#101218] text-slate-100 shadow-none overflow-hidden">
+          <CardHeader className="border-b border-white/[0.07]">
+            <CardTitle className="flex items-center gap-2 text-lg text-white">
+              <Search className="w-5 h-5 text-orange-400" /> Vehículo y Cliente
             </CardTitle>
-            <CardDescription>Busca por placa para autocompletar o registra datos nuevos</CardDescription>
+            <CardDescription className="text-slate-400">
+              Busca por placa para autocompletar o registra datos nuevos
+            </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex gap-2 items-start">
-              <div className="flex-1 space-y-1">
-                <Label htmlFor="plate">Placa *</Label>
+          <CardContent className="space-y-4 pt-5">
+            <div className="flex gap-2.5 items-start">
+              <div className="flex-1 space-y-1.5">
+                <Label htmlFor="plate" className="text-xs font-semibold text-slate-300">
+                  Placa *
+                </Label>
                 <Input
                   id="plate"
                   {...register('plate', {
@@ -280,26 +303,26 @@ export default function NewOrderPage() {
                     },
                   })}
                   placeholder="ABC-123"
-                  className="uppercase"
+                  className={`${DARK_INPUT_CLASS} uppercase font-mono`}
                   disabled={isSubmitting}
                 />
-                {errors.plate && <p className="text-destructive text-xs">{errors.plate.message}</p>}
+                {errors.plate && <p className="text-rose-400 text-xs">{errors.plate.message}</p>}
               </div>
               <Button
                 type="button"
-                variant="secondary"
-                className="mt-6"
+                variant="outline"
+                className="mt-6 h-10 rounded-xl border-white/10 bg-white/[0.06] text-slate-100 hover:bg-orange-500/15 hover:border-orange-500/40 hover:text-orange-200"
                 onClick={handleSearchPlate}
                 disabled={isSearching || isSubmitting}
               >
                 {isSearching ? (
                   <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin text-orange-400" />
                     Buscando
                   </>
                 ) : (
                   <>
-                    <Search className="w-4 h-4 mr-2" />
+                    <Search className="w-4 h-4 mr-2 text-orange-400" />
                     Buscar
                   </>
                 )}
@@ -309,16 +332,23 @@ export default function NewOrderPage() {
             {searchFeedback && (
               <div
                 className={cn(
-                  'text-xs p-3 rounded-lg border flex items-center gap-2',
-                  searchFeedback.type === 'success' && 'bg-emerald-50 border-emerald-200 text-emerald-800',
-                  searchFeedback.type === 'info' && 'bg-blue-50 border-blue-200 text-blue-800',
-                  searchFeedback.type === 'error' && 'bg-destructive/10 border-destructive/20 text-destructive'
+                  'text-xs p-3.5 rounded-xl border flex items-center gap-2.5 font-medium',
+                  searchFeedback.type === 'success' &&
+                    'bg-emerald-500/10 border-emerald-500/30 text-emerald-200',
+                  searchFeedback.type === 'info' && 'bg-sky-500/10 border-sky-500/30 text-sky-200',
+                  searchFeedback.type === 'error' &&
+                    'bg-rose-500/10 border-rose-500/30 text-rose-200'
                 )}
               >
                 {searchFeedback.type === 'success' ? (
-                  <Check className="w-4 h-4 shrink-0" />
+                  <Check className="w-4 h-4 shrink-0 text-emerald-400" />
                 ) : (
-                  <AlertCircle className="w-4 h-4 shrink-0" />
+                  <AlertCircle
+                    className={cn(
+                      'w-4 h-4 shrink-0',
+                      searchFeedback.type === 'info' ? 'text-sky-400' : 'text-rose-400'
+                    )}
+                  />
                 )}
                 <span>{searchFeedback.message}</span>
               </div>
@@ -326,57 +356,86 @@ export default function NewOrderPage() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="customer_name" className="flex items-center gap-1">
-                  <User className="w-3 h-3" /> Nombre Cliente *
+                <Label
+                  htmlFor="customer_name"
+                  className="flex items-center gap-1.5 text-xs font-semibold text-slate-300"
+                >
+                  <User className="w-3.5 h-3.5 text-slate-400" /> Nombre Cliente *
                 </Label>
-                <Input id="customer_name" {...register('customer_name')} disabled={isSubmitting} />
+                <Input
+                  id="customer_name"
+                  {...register('customer_name')}
+                  className={DARK_INPUT_CLASS}
+                  disabled={isSubmitting}
+                />
                 {errors.customer_name && (
-                  <p className="text-destructive text-xs">{errors.customer_name.message}</p>
+                  <p className="text-rose-400 text-xs">{errors.customer_name.message}</p>
                 )}
               </div>
               <div className="space-y-2">
-                <Label htmlFor="customer_phone">WhatsApp *</Label>
+                <Label htmlFor="customer_phone" className="text-xs font-semibold text-slate-300">
+                  WhatsApp *
+                </Label>
                 <Input
                   id="customer_phone"
                   {...register('customer_phone')}
                   type="tel"
                   placeholder="Ej. +57 300 123 4567"
+                  className={DARK_INPUT_CLASS}
                   disabled={isSubmitting}
                 />
                 {errors.customer_phone && (
-                  <p className="text-destructive text-xs">{errors.customer_phone.message}</p>
+                  <p className="text-rose-400 text-xs">{errors.customer_phone.message}</p>
                 )}
               </div>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="motorcycle_make" className="flex items-center gap-1">
-                  <Bike className="w-3 h-3" /> Marca *
+                <Label
+                  htmlFor="motorcycle_make"
+                  className="flex items-center gap-1.5 text-xs font-semibold text-slate-300"
+                >
+                  <Bike className="w-3.5 h-3.5 text-slate-400" /> Marca *
                 </Label>
-                <Input id="motorcycle_make" {...register('motorcycle_make')} disabled={isSubmitting} />
+                <Input
+                  id="motorcycle_make"
+                  {...register('motorcycle_make')}
+                  className={DARK_INPUT_CLASS}
+                  disabled={isSubmitting}
+                />
                 {errors.motorcycle_make && (
-                  <p className="text-destructive text-xs">{errors.motorcycle_make.message}</p>
+                  <p className="text-rose-400 text-xs">{errors.motorcycle_make.message}</p>
                 )}
               </div>
               <div className="space-y-2">
-                <Label htmlFor="motorcycle_model">Modelo *</Label>
-                <Input id="motorcycle_model" {...register('motorcycle_model')} disabled={isSubmitting} />
+                <Label htmlFor="motorcycle_model" className="text-xs font-semibold text-slate-300">
+                  Modelo *
+                </Label>
+                <Input
+                  id="motorcycle_model"
+                  {...register('motorcycle_model')}
+                  className={DARK_INPUT_CLASS}
+                  disabled={isSubmitting}
+                />
                 {errors.motorcycle_model && (
-                  <p className="text-destructive text-xs">{errors.motorcycle_model.message}</p>
+                  <p className="text-rose-400 text-xs">{errors.motorcycle_model.message}</p>
                 )}
               </div>
               <div className="space-y-2">
-                <Label htmlFor="motorcycle_year">Año</Label>
+                <Label htmlFor="motorcycle_year" className="text-xs font-semibold text-slate-300">
+                  Año
+                </Label>
                 <Input
                   id="motorcycle_year"
                   {...register('motorcycle_year')}
                   type="number"
                   placeholder="2024"
+                  className={DARK_INPUT_CLASS}
                   disabled={isSubmitting}
                 />
                 {errors.motorcycle_year && (
-                  <p className="text-destructive text-xs">{errors.motorcycle_year.message}</p>
+                  <p className="text-rose-400 text-xs">{errors.motorcycle_year.message}</p>
                 )}
               </div>
             </div>
@@ -384,45 +443,71 @@ export default function NewOrderPage() {
         </Card>
 
         {/* Paso 2: Detalles de la Orden */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <FileText className="w-5 h-5 text-primary" /> Detalles de Ingreso
+        <Card className="rounded-2xl border border-white/10 bg-[#101218] text-slate-100 shadow-none overflow-hidden">
+          <CardHeader className="border-b border-white/[0.07]">
+            <CardTitle className="flex items-center gap-2 text-lg text-white">
+              <FileText className="w-5 h-5 text-orange-400" /> Detalles de Ingreso
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
+          <CardContent className="space-y-4 pt-5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="mileage" className="flex items-center gap-1">
-                  <Gauge className="w-3 h-3" /> Kilometraje *
+                <Label
+                  htmlFor="mileage"
+                  className="flex items-center gap-1.5 text-xs font-semibold text-slate-300"
+                >
+                  <Gauge className="w-3.5 h-3.5 text-slate-400" /> Kilometraje *
                 </Label>
-                <Input id="mileage" {...register('mileage')} type="number" min={0} disabled={isSubmitting} />
-                {errors.mileage && <p className="text-destructive text-xs">{errors.mileage.message}</p>}
+                <Input
+                  id="mileage"
+                  {...register('mileage')}
+                  type="number"
+                  min={0}
+                  className={`${DARK_INPUT_CLASS} font-mono`}
+                  disabled={isSubmitting}
+                />
+                {errors.mileage && <p className="text-rose-400 text-xs">{errors.mileage.message}</p>}
               </div>
               <div className="space-y-2">
-                <Label htmlFor="fuel_level" className="flex items-center gap-1">
-                  <Fuel className="w-3 h-3" /> Gasolina
+                <Label
+                  htmlFor="fuel_level"
+                  className="flex items-center gap-1.5 text-xs font-semibold text-slate-300"
+                >
+                  <Fuel className="w-3.5 h-3.5 text-slate-400" /> Gasolina
                 </Label>
                 <select
                   id="fuel_level"
                   {...register('fuel_level')}
                   disabled={isSubmitting}
-                  className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm"
+                  className="w-full h-10 px-3 rounded-xl border border-white/10 bg-[#0B0D13] text-sm text-white focus:outline-none focus:border-orange-500/60 focus:ring-2 focus:ring-orange-500/25 [color-scheme:dark]"
                 >
-                  <option value="empty">Vacío</option>
-                  <option value="low">1/4</option>
-                  <option value="half">1/2</option>
-                  <option value="high">3/4</option>
-                  <option value="full">Lleno</option>
+                  <option value="empty" className="bg-[#101218] text-white">
+                    Vacío
+                  </option>
+                  <option value="low" className="bg-[#101218] text-white">
+                    1/4
+                  </option>
+                  <option value="half" className="bg-[#101218] text-white">
+                    1/2
+                  </option>
+                  <option value="high" className="bg-[#101218] text-white">
+                    3/4
+                  </option>
+                  <option value="full" className="bg-[#101218] text-white">
+                    Lleno
+                  </option>
                 </select>
               </div>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="description">Notas / Síntomas</Label>
+              <Label htmlFor="description" className="text-xs font-semibold text-slate-300">
+                Notas / Síntomas
+              </Label>
               <Textarea
                 id="description"
                 {...register('description')}
                 placeholder="El cliente reporta un ruido en..."
+                className="min-h-[92px] rounded-xl border-white/10 bg-[#0B0D13] text-white placeholder:text-slate-500 focus-visible:border-orange-500/60 focus-visible:ring-orange-500/30 focus-visible:ring-offset-0 [color-scheme:dark]"
                 disabled={isSubmitting}
               />
             </div>
@@ -430,91 +515,130 @@ export default function NewOrderPage() {
         </Card>
 
         {/* Paso 3: Evidencia Visual */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <Camera className="w-5 h-5 text-primary" /> Evidencia Fotográfica
+        <Card className="rounded-2xl border border-white/10 bg-[#101218] text-slate-100 shadow-none overflow-hidden">
+          <CardHeader className="border-b border-white/[0.07]">
+            <CardTitle className="flex items-center gap-2 text-lg text-white">
+              <Camera className="w-5 h-5 text-orange-400" /> Evidencia Fotográfica
             </CardTitle>
-            <CardDescription>Las fotos se comprimen automáticamente a WebP para carga rápida</CardDescription>
+            <CardDescription className="text-slate-400">
+              Las fotos se comprimen automáticamente a WebP (~250 KB) para carga rápida
+            </CardDescription>
           </CardHeader>
-          <CardContent className="grid grid-cols-2 gap-4">
-            {Object.entries(PHOTO_LABELS).map(([key, label]) => (
-              <div key={key} className="relative group">
-                <Label className="text-center block mb-2">{label}</Label>
-                <button
-                  type="button"
-                  disabled={isSubmitting}
-                  className={cn(
-                    'w-full aspect-square rounded-xl border-2 border-dashed flex flex-col items-center justify-center gap-2 cursor-pointer overflow-hidden bg-muted/50 hover:bg-muted transition-all disabled:opacity-50',
-                    previews[key] && 'border-solid border-primary'
-                  )}
-                  onClick={() => document.getElementById(`photo-${key}`)?.click()}
-                >
-                  {previews[key] ? (
-                    <img src={previews[key]} alt={label} className="w-full h-full object-cover" />
-                  ) : (
-                    <>
-                      <Camera className="w-8 h-8 text-muted-foreground" />
-                      <span className="text-xs text-muted-foreground">Capturar</span>
-                    </>
-                  )}
-                </button>
-                <input
-                  id={`photo-${key}`}
-                  type="file"
-                  accept="image/*"
-                  capture="environment"
-                  className="hidden"
-                  disabled={isSubmitting}
-                  onChange={(e) => handleFileChange(key, e)}
-                />
-              </div>
-            ))}
+          <CardContent className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-5">
+            {Object.entries(PHOTO_LABELS).map(([key, label]) => {
+              const isCompressing = compressingKey === key
+              const hasPreview = Boolean(previews[key])
+              return (
+                <div key={key} className="relative group">
+                  <div className="flex items-center justify-between mb-2">
+                    <Label className="text-xs font-semibold text-slate-300">{label}</Label>
+                    {hasPreview && (
+                      <span className="rounded-full border border-emerald-500/30 bg-emerald-500/15 px-1.5 py-0.5 text-[10px] font-bold text-emerald-300">
+                        WebP
+                      </span>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    disabled={isSubmitting || isCompressing}
+                    className={cn(
+                      'w-full aspect-square rounded-xl border-2 border-dashed border-white/15 flex flex-col items-center justify-center gap-2 cursor-pointer overflow-hidden bg-[#0B0D13] hover:bg-white/[0.04] hover:border-orange-500/40 transition-all disabled:opacity-60',
+                      hasPreview && 'border-solid border-orange-500/70'
+                    )}
+                    onClick={() => document.getElementById(`photo-${key}`)?.click()}
+                  >
+                    {isCompressing ? (
+                      <>
+                        <Loader2 className="w-7 h-7 animate-spin text-orange-400" />
+                        <span className="text-[11px] font-medium text-orange-300">
+                          Comprimiendo...
+                        </span>
+                      </>
+                    ) : previews[key] ? (
+                      <img src={previews[key]} alt={label} className="w-full h-full object-cover" />
+                    ) : (
+                      <>
+                        <Camera className="w-7 h-7 text-slate-500 group-hover:text-orange-400 transition-colors" />
+                        <span className="text-xs text-slate-400">Capturar</span>
+                      </>
+                    )}
+                  </button>
+                  <input
+                    id={`photo-${key}`}
+                    type="file"
+                    accept="image/*"
+                    capture="environment"
+                    className="hidden"
+                    disabled={isSubmitting || isCompressing}
+                    onChange={(e) => handleFileChange(key, e)}
+                  />
+                </div>
+              )
+            })}
           </CardContent>
         </Card>
 
-        {/* Paso 4: Firma */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">Firma de Recepción *</CardTitle>
-            <CardDescription>El cliente debe firmar para confirmar el estado de ingreso</CardDescription>
+        {/* Paso 4: Firma Digital */}
+        <Card className="rounded-2xl border border-white/10 bg-[#101218] text-slate-100 shadow-none overflow-hidden">
+          <CardHeader className="border-b border-white/[0.07]">
+            <CardTitle className="flex items-center gap-2 text-lg text-white">
+              <PenTool className="w-5 h-5 text-orange-400" /> Firma de Recepción *
+            </CardTitle>
+            <CardDescription className="text-slate-400">
+              El cliente debe firmar para confirmar el estado de ingreso
+            </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-3">
-            <div ref={sigContainerRef} className="border-2 rounded-lg bg-white h-48 relative overflow-hidden">
-              <SignatureCanvas
-                ref={sigCanvas}
-                penColor="black"
-                onBegin={() => setSignatureError(null)}
-                canvasProps={{
-                  width: canvasWidth,
-                  height: 192,
-                  className: 'w-full h-full touch-none',
-                }}
-              />
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                disabled={isSubmitting}
-                className="absolute bottom-2 right-2 text-xs bg-slate-100/80 hover:bg-slate-200"
-                onClick={() => {
-                  sigCanvas.current?.clear()
-                  setSignatureError(null)
-                }}
+          <CardContent className="space-y-3 pt-5">
+            <div className="rounded-xl border border-white/15 bg-[#0B0D13] p-3 space-y-2.5">
+              <div className="flex items-center justify-between text-[11px] font-medium text-slate-400">
+                <span>Área de firma del cliente</span>
+                <span className="text-slate-500">Trazo oscuro sobre lienzo blanco</span>
+              </div>
+              <div
+                ref={sigContainerRef}
+                className="border border-slate-300 rounded-lg bg-white h-48 relative overflow-hidden shadow-inner"
               >
-                Limpiar
-              </Button>
+                <SignatureCanvas
+                  ref={sigCanvas}
+                  penColor="#09090B"
+                  onBegin={() => setSignatureError(null)}
+                  canvasProps={{
+                    width: canvasWidth,
+                    height: 192,
+                    className: 'w-full h-full touch-none',
+                  }}
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={isSubmitting}
+                  className="absolute bottom-2.5 right-2.5 h-8 gap-1.5 text-xs bg-slate-900/90 text-white border-slate-700 hover:bg-slate-800 hover:text-white"
+                  onClick={() => {
+                    sigCanvas.current?.clear()
+                    setSignatureError(null)
+                  }}
+                >
+                  <RotateCcw className="w-3 h-3" />
+                  Limpiar
+                </Button>
+              </div>
             </div>
             {signatureError && (
-              <p className="text-destructive text-xs font-medium flex items-center gap-1.5">
-                <AlertCircle className="w-3.5 h-3.5" />
+              <p className="text-rose-400 text-xs font-medium flex items-center gap-1.5">
+                <AlertCircle className="w-3.5 h-3.5 shrink-0" />
                 {signatureError}
               </p>
             )}
           </CardContent>
         </Card>
 
-        <Button type="submit" size="lg" className="w-full h-14 text-base font-bold gap-2" disabled={isSubmitting}>
+        <Button
+          type="submit"
+          size="lg"
+          className="w-full h-14 text-base font-bold gap-2 rounded-2xl bg-orange-500 hover:bg-orange-400 text-slate-950 shadow-[0_0_28px_rgba(249,115,22,0.3)] border border-orange-400/50 transition-all"
+          disabled={isSubmitting || Boolean(compressingKey)}
+        >
           {isSubmitting ? (
             <>
               <Loader2 className="w-5 h-5 animate-spin" />

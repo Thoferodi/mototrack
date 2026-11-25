@@ -1,10 +1,11 @@
 import Link from 'next/link'
 import { createServerSupabaseClient } from '@/supabase/server'
 import { notFound, redirect } from 'next/navigation'
-import { ArrowLeft, ExternalLink } from 'lucide-react'
+import { ArrowLeft, ExternalLink, User, Bike, FileText, History } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { getWorkOrderStatusLabel } from '@/lib/workorder-status'
 import { BudgetManager, CatalogTemplateItem } from './budget-manager'
 import { StatusSelector } from './status-selector'
 import { Timeline } from './timeline'
@@ -14,6 +15,17 @@ interface PageProps {
   params: {
     id: string
   }
+}
+
+const STATUS_BADGE_CLASSES: Record<string, string> = {
+  received: 'bg-slate-500/15 text-slate-200 border-slate-400/30',
+  diagnosing: 'bg-sky-500/15 text-sky-300 border-sky-400/30',
+  waiting_approval: 'bg-amber-500/15 text-amber-300 border-amber-400/30',
+  in_progress: 'bg-orange-500/15 text-orange-300 border-orange-400/30',
+  testing: 'bg-violet-500/15 text-violet-300 border-violet-400/30',
+  ready: 'bg-emerald-500/15 text-emerald-300 border-emerald-400/30',
+  delivered: 'bg-emerald-500/15 text-emerald-300 border-emerald-400/30',
+  cancelled: 'bg-rose-500/15 text-rose-300 border-rose-400/30',
 }
 
 export default async function OrderDetailPage({ params }: PageProps) {
@@ -107,44 +119,67 @@ export default async function OrderDetailPage({ params }: PageProps) {
 
   const motorcycle = order.motorcycles
   const customer = motorcycle?.customers
+  const currentStatus = order.status || 'received'
+  const statusBadgeClass =
+    STATUS_BADGE_CLASSES[currentStatus] || 'bg-white/[0.06] text-slate-200 border-white/15'
 
   return (
     <div className="flex flex-col gap-6 p-4 md:p-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <Button asChild variant="ghost" size="sm" className="-ml-2 text-slate-600">
-          <Link href="/dashboard/orders">
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Volver al tablero
-          </Link>
-        </Button>
+        <Link
+          href="/dashboard/orders"
+          className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-3.5 py-1.5 text-xs font-semibold text-slate-300 transition-all hover:border-orange-500/35 hover:bg-white/[0.08] hover:text-white"
+        >
+          <ArrowLeft className="w-3.5 h-3.5 text-orange-400" />
+          Volver al tablero
+        </Link>
 
         {order.tracking_token && (
           <div className="flex items-center gap-2">
             <CopyTrackerButton token={order.tracking_token} />
-            <Button asChild variant="outline" size="sm" className="gap-1.5">
+            <Button
+              asChild
+              variant="outline"
+              size="sm"
+              className="gap-1.5 rounded-xl border-white/10 bg-white/[0.04] text-slate-200 hover:bg-white/[0.08] hover:border-orange-500/40 hover:text-white"
+            >
               <Link href={`/track/${order.tracking_token}`} target="_blank">
                 <span>Ver Live Tracker</span>
-                <ExternalLink className="w-3.5 h-3.5" />
+                <ExternalLink className="w-3.5 h-3.5 text-orange-400" />
               </Link>
             </Button>
           </div>
         )}
       </div>
 
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl md:text-3xl font-bold tracking-tight">
-            Orden #{order.order_number ?? order.id.slice(0, 8)}
-          </h1>
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 rounded-2xl border border-white/10 bg-[#101218] p-5">
+        <div className="space-y-2">
+          <div className="flex flex-wrap items-center gap-2.5">
+            <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-white">
+              Orden{' '}
+              <span className="font-mono text-orange-400">
+                #{order.order_number ?? order.id.slice(0, 8)}
+              </span>
+            </h1>
+            <Badge
+              variant="outline"
+              className="font-mono text-sm font-bold tracking-wider rounded-lg border-orange-500/35 bg-orange-500/15 text-orange-300 px-2.5 py-0.5"
+            >
+              {motorcycle?.license_plate || 'SIN-PLACA'}
+            </Badge>
+            <Badge variant="outline" className={`rounded-full text-xs font-semibold ${statusBadgeClass}`}>
+              {getWorkOrderStatusLabel(currentStatus)}
+            </Badge>
+          </div>
           {order.created_at && (
-            <p className="text-muted-foreground text-sm">
+            <p className="text-slate-400 text-sm">
               Registrada el {new Date(order.created_at).toLocaleDateString('es-ES')}
             </p>
           )}
         </div>
         <StatusSelector
           orderId={order.id}
-          currentStatus={order.status || 'received'}
+          currentStatus={currentStatus}
           trackingToken={order.tracking_token || ''}
           customerName={customer?.full_name || 'Cliente'}
           customerPhone={customer?.phone_whatsapp || ''}
@@ -156,61 +191,92 @@ export default async function OrderDetailPage({ params }: PageProps) {
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         {/* Panel Izquierdo: Info Cliente y Moto */}
-        <div className="lg:col-span-1 space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Cliente</CardTitle>
+        <div className="lg:col-span-1 space-y-6 min-w-0">
+          <Card className="rounded-2xl border border-white/10 bg-[#101218] text-slate-100 shadow-none">
+            <CardHeader className="border-b border-white/[0.07] pb-3.5">
+              <CardTitle className="text-base font-bold text-white flex items-center gap-2">
+                <User className="w-4 h-4 text-orange-400" />
+                Cliente
+              </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-4 pt-4">
               <div>
-                <p className="text-sm font-medium text-muted-foreground">Nombre</p>
-                <p className="text-lg font-semibold">{customer?.full_name || 'Sin cliente'}</p>
+                <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+                  Nombre
+                </p>
+                <p className="text-base font-semibold text-white mt-0.5">
+                  {customer?.full_name || 'Sin cliente'}
+                </p>
               </div>
               <div>
-                <p className="text-sm font-medium text-muted-foreground">Teléfono / WhatsApp</p>
-                <p>{customer?.phone_whatsapp || 'No registrado'}</p>
+                <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+                  Teléfono / WhatsApp
+                </p>
+                <p className="font-mono text-sm text-slate-200 mt-0.5">
+                  {customer?.phone_whatsapp || 'No registrado'}
+                </p>
               </div>
               {customer?.email && (
                 <div>
-                  <p className="text-sm font-medium text-muted-foreground">Email</p>
-                  <p>{customer.email}</p>
+                  <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+                    Email
+                  </p>
+                  <p className="text-sm text-slate-200 mt-0.5">{customer.email}</p>
                 </div>
               )}
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Motocicleta</CardTitle>
+          <Card className="rounded-2xl border border-white/10 bg-[#101218] text-slate-100 shadow-none">
+            <CardHeader className="border-b border-white/[0.07] pb-3.5">
+              <CardTitle className="text-base font-bold text-white flex items-center gap-2">
+                <Bike className="w-4 h-4 text-orange-400" />
+                Motocicleta
+              </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex justify-between items-start">
+            <CardContent className="space-y-4 pt-4">
+              <div className="flex justify-between items-start gap-3">
                 <div>
-                  <p className="text-sm font-medium text-muted-foreground">Placa</p>
-                  <Badge variant="outline" className="text-lg font-mono px-3 py-1">
+                  <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+                    Placa
+                  </p>
+                  <Badge
+                    variant="outline"
+                    className="mt-1 text-base font-mono font-bold tracking-wider px-3 py-1 rounded-xl border-orange-500/35 bg-orange-500/15 text-orange-300"
+                  >
                     {motorcycle?.license_plate || 'SIN-PLACA'}
                   </Badge>
                 </div>
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">Kilometraje</p>
-                  <p className="font-semibold">{order.mileage_in?.toLocaleString() ?? 0} km</p>
+                <div className="text-right">
+                  <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+                    Kilometraje
+                  </p>
+                  <p className="mt-1 font-mono font-semibold text-white">
+                    {order.mileage_in?.toLocaleString() ?? 0} km
+                  </p>
                 </div>
               </div>
               <div>
-                <p className="text-sm font-medium text-muted-foreground">Marca / Modelo</p>
-                <p className="text-lg font-semibold">
-                  {motorcycle?.brand} {motorcycle?.model} {motorcycle?.year ? `(${motorcycle.year})` : ''}
+                <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+                  Marca / Modelo
+                </p>
+                <p className="text-base font-semibold text-white mt-0.5">
+                  {motorcycle?.brand} {motorcycle?.model}{' '}
+                  {motorcycle?.year ? `(${motorcycle.year})` : ''}
                 </p>
               </div>
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Notas de Ingreso</CardTitle>
+          <Card className="rounded-2xl border border-white/10 bg-[#101218] text-slate-100 shadow-none">
+            <CardHeader className="border-b border-white/[0.07] pb-3.5">
+              <CardTitle className="text-base font-bold text-white flex items-center gap-2">
+                <FileText className="w-4 h-4 text-orange-400" />
+                Notas de Ingreso
+              </CardTitle>
             </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground italic whitespace-pre-wrap">
+            <CardContent className="pt-4">
+              <p className="text-sm text-slate-300 italic whitespace-pre-wrap leading-relaxed">
                 {order.customer_notes || 'Sin descripción'}
               </p>
             </CardContent>
@@ -218,18 +284,21 @@ export default async function OrderDetailPage({ params }: PageProps) {
         </div>
 
         {/* Panel Derecho: Presupuesto y Timeline */}
-        <div className="lg:col-span-2 space-y-6">
+        <div className="lg:col-span-2 space-y-6 min-w-0">
           <BudgetManager
             orderId={order.id}
             items={order.order_items || []}
             catalogItems={catalogItems}
           />
 
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Historial de Actividad</CardTitle>
+          <Card className="rounded-2xl border border-white/10 bg-[#101218] text-slate-100 shadow-none">
+            <CardHeader className="border-b border-white/[0.07] pb-3.5">
+              <CardTitle className="text-lg font-bold text-white flex items-center gap-2">
+                <History className="w-5 h-5 text-orange-400" />
+                Historial de Actividad
+              </CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="pt-5">
               <Timeline events={timeline} />
             </CardContent>
           </Card>
