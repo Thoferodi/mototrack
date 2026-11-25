@@ -62,6 +62,9 @@ function calcOrderTotal(items?: OrderItemSummary[]): number {
   }, 0)
 }
 
+const DARK_INPUT_CLASS =
+  'h-10 rounded-xl border-white/10 bg-[#0B0D13] text-white placeholder:text-slate-500 focus-visible:border-orange-500/60 focus-visible:ring-orange-500/30 focus-visible:ring-offset-0 [color-scheme:dark]'
+
 export function VehiclesManager({
   vehicles,
   customers,
@@ -205,120 +208,157 @@ export function VehiclesManager({
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Historial Clínico de Vehículos</h1>
-          <p className="text-muted-foreground text-sm">
+          <h1 className="text-2xl font-bold tracking-tight text-white">
+            Historial Clínico de Vehículos
+          </h1>
+          <p className="text-slate-400 text-sm">
             Consulta las motocicletas registradas, sus propietarios y su historial de servicio.
           </p>
         </div>
-        <Button type="button" onClick={openCreateForm} className="gap-2 h-11">
+        <Button
+          type="button"
+          onClick={openCreateForm}
+          className="gap-2 h-11 rounded-xl bg-orange-500 hover:bg-orange-400 text-slate-950 font-bold shadow-[0_0_24px_rgba(249,115,22,0.28)] border border-orange-400/50"
+        >
           <Plus className="w-4 h-4" />
           Registrar Vehículo
         </Button>
       </div>
 
       {error && (
-        <div className="bg-destructive/10 border border-destructive/20 text-destructive text-sm p-4 rounded-xl flex items-center gap-3">
-          <AlertCircle className="w-5 h-5 shrink-0" />
+        <div
+          role="alert"
+          className="bg-rose-500/10 border border-rose-500/30 text-rose-200 text-sm p-4 rounded-xl flex items-center gap-3"
+        >
+          <AlertCircle className="w-5 h-5 shrink-0 text-rose-400" />
           <span className="font-medium">{error}</span>
         </div>
       )}
 
       {success && (
-        <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 text-sm p-4 rounded-xl flex items-center gap-3">
-          <CheckCircle2 className="w-5 h-5 shrink-0 text-emerald-600" />
+        <div className="bg-emerald-500/10 border border-emerald-500/30 text-emerald-200 text-sm p-4 rounded-xl flex items-center gap-3">
+          <CheckCircle2 className="w-5 h-5 shrink-0 text-emerald-400" />
           <span className="font-medium">{success}</span>
         </div>
       )}
 
       {isFormOpen && (
-        <Card className="border-2 border-primary/20 shadow-md">
-          <CardHeader className="flex flex-row items-center justify-between pb-3">
+        <Card className="rounded-2xl border border-orange-500/35 bg-[#101218] text-slate-100 shadow-[0_24px_60px_rgba(0,0,0,0.65)]">
+          <CardHeader className="flex flex-row items-center justify-between pb-3 border-b border-white/[0.07]">
             <div>
-              <CardTitle className="text-lg">
+              <CardTitle className="text-lg text-white">
                 {editingVehicle
                   ? `Editar Moto (${editingVehicle.license_plate})`
                   : 'Registrar Nueva Motocicleta'}
               </CardTitle>
-              <CardDescription>
+              <CardDescription className="text-slate-400">
                 Completa los datos técnicos del vehículo y asócialo a un propietario.
               </CardDescription>
             </div>
-            <Button type="button" variant="ghost" size="icon" onClick={closeForm} disabled={isSaving}>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              onClick={closeForm}
+              disabled={isSaving}
+              className="rounded-xl text-slate-400 hover:bg-white/[0.06] hover:text-white"
+            >
               <X className="w-4 h-4" />
             </Button>
           </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
+          <CardContent className="pt-5">
+            <form onSubmit={handleSubmit} className="space-y-5">
               <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="v-plate">Placa *</Label>
+                  <Label htmlFor="v-plate" className="text-xs font-semibold text-slate-300">
+                    Placa *
+                  </Label>
                   <Input
                     id="v-plate"
                     value={licensePlate}
                     onChange={(e) => setLicensePlate(e.target.value)}
                     placeholder="ABC123"
-                    className="uppercase"
+                    className={`${DARK_INPUT_CLASS} uppercase font-mono`}
                     required
                     disabled={isSaving}
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="v-brand">Marca *</Label>
+                  <Label htmlFor="v-brand" className="text-xs font-semibold text-slate-300">
+                    Marca *
+                  </Label>
                   <Input
                     id="v-brand"
                     value={brand}
                     onChange={(e) => setBrand(e.target.value)}
                     placeholder="Yamaha"
+                    className={DARK_INPUT_CLASS}
                     required
                     disabled={isSaving}
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="v-model">Modelo *</Label>
+                  <Label htmlFor="v-model" className="text-xs font-semibold text-slate-300">
+                    Modelo *
+                  </Label>
                   <Input
                     id="v-model"
                     value={model}
                     onChange={(e) => setModel(e.target.value)}
                     placeholder="FZ 2.0"
+                    className={DARK_INPUT_CLASS}
                     required
                     disabled={isSaving}
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="v-year">Año</Label>
+                  <Label htmlFor="v-year" className="text-xs font-semibold text-slate-300">
+                    Año
+                  </Label>
                   <Input
                     id="v-year"
                     type="number"
                     value={year}
                     onChange={(e) => setYear(e.target.value)}
                     placeholder="2023"
+                    className={DARK_INPUT_CLASS}
                     disabled={isSaving}
                   />
                 </div>
               </div>
 
-              <div className="pt-2 border-t space-y-3">
-                <div className="flex items-center justify-between">
-                  <Label className="text-xs font-bold uppercase text-slate-500">Propietario</Label>
+              <div className="pt-4 border-t border-white/10 space-y-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <Label className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                    Propietario
+                  </Label>
                   {!editingVehicle && customers.length > 0 && (
-                    <div className="flex gap-2">
+                    <div className="inline-flex gap-1 rounded-xl border border-white/10 bg-[#0B0D13] p-1">
                       <Button
                         type="button"
                         size="sm"
-                        variant={customerMode === 'existing' ? 'default' : 'outline'}
+                        variant="ghost"
                         onClick={() => setCustomerMode('existing')}
                         disabled={isSaving}
-                        className="h-7 text-xs"
+                        className={
+                          customerMode === 'existing'
+                            ? 'h-7 rounded-lg bg-orange-500/15 text-orange-300 border border-orange-500/30 hover:bg-orange-500/20 hover:text-orange-200 text-xs font-semibold'
+                            : 'h-7 rounded-lg text-slate-400 hover:text-white hover:bg-white/[0.04] text-xs font-semibold border border-transparent'
+                        }
                       >
                         Cliente Existente
                       </Button>
                       <Button
                         type="button"
                         size="sm"
-                        variant={customerMode === 'new' ? 'default' : 'outline'}
+                        variant="ghost"
                         onClick={() => setCustomerMode('new')}
                         disabled={isSaving}
-                        className="h-7 text-xs"
+                        className={
+                          customerMode === 'new'
+                            ? 'h-7 rounded-lg bg-orange-500/15 text-orange-300 border border-orange-500/30 hover:bg-orange-500/20 hover:text-orange-200 text-xs font-semibold'
+                            : 'h-7 rounded-lg text-slate-400 hover:text-white hover:bg-white/[0.04] text-xs font-semibold border border-transparent'
+                        }
                       >
                         Nuevo Cliente
                       </Button>
@@ -331,10 +371,10 @@ export function VehiclesManager({
                     value={selectedCustomerId}
                     onChange={(e) => setSelectedCustomerId(e.target.value)}
                     disabled={isSaving}
-                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                    className="flex h-10 w-full rounded-xl border border-white/10 bg-[#0B0D13] px-3 py-2 text-sm text-white focus:outline-none focus:border-orange-500/60 focus:ring-2 focus:ring-orange-500/25 [color-scheme:dark]"
                   >
                     {customers.map((c) => (
-                      <option key={c.id} value={c.id}>
+                      <option key={c.id} value={c.id} className="bg-[#101218] text-white">
                         {c.full_name} {c.phone_whatsapp ? `(${c.phone_whatsapp})` : ''}
                       </option>
                     ))}
@@ -342,22 +382,28 @@ export function VehiclesManager({
                 ) : (
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="c-name">Nombre Propietario *</Label>
+                      <Label htmlFor="c-name" className="text-xs font-semibold text-slate-300">
+                        Nombre Propietario *
+                      </Label>
                       <Input
                         id="c-name"
                         value={customerName}
                         onChange={(e) => setCustomerName(e.target.value)}
+                        className={DARK_INPUT_CLASS}
                         required
                         disabled={isSaving}
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="c-phone">WhatsApp / Teléfono *</Label>
+                      <Label htmlFor="c-phone" className="text-xs font-semibold text-slate-300">
+                        WhatsApp / Teléfono *
+                      </Label>
                       <Input
                         id="c-phone"
                         value={customerPhone}
                         onChange={(e) => setCustomerPhone(e.target.value)}
                         placeholder="+57 300 000 0000"
+                        className={DARK_INPUT_CLASS}
                         required
                         disabled={isSaving}
                       />
@@ -367,10 +413,20 @@ export function VehiclesManager({
               </div>
 
               <div className="flex justify-end gap-2 pt-2">
-                <Button type="button" variant="outline" onClick={closeForm} disabled={isSaving}>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={closeForm}
+                  disabled={isSaving}
+                  className="rounded-xl border-white/10 bg-white/[0.03] text-slate-300 hover:bg-white/[0.08] hover:text-white"
+                >
                   Cancelar
                 </Button>
-                <Button type="submit" disabled={isSaving}>
+                <Button
+                  type="submit"
+                  disabled={isSaving}
+                  className="rounded-xl bg-orange-500 hover:bg-orange-400 text-slate-950 font-bold"
+                >
                   {isSaving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                   {isSaving
                     ? 'Guardando...'
@@ -386,12 +442,12 @@ export function VehiclesManager({
 
       {/* Buscador */}
       <div className="relative max-w-md">
-        <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+        <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
         <Input
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Buscar por placa, marca, modelo o dueño..."
-          className="pl-9 bg-white"
+          className="h-10 pl-10 rounded-xl bg-[#101218] border-white/10 text-white placeholder:text-slate-500 focus-visible:border-orange-500/60 focus-visible:ring-orange-500/30 focus-visible:ring-offset-0 [color-scheme:dark]"
         />
       </div>
 
@@ -406,33 +462,41 @@ export function VehiclesManager({
           const isRowDeleting = deletingId === v.id
 
           return (
-            <Card key={v.id} className="overflow-hidden">
+            <Card
+              key={v.id}
+              className="overflow-hidden rounded-2xl border border-white/10 bg-[#101218] text-slate-100 shadow-none transition-colors hover:border-orange-500/35"
+            >
               <CardContent className="p-5">
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                   <div className="flex items-start gap-4">
-                    <div className="w-12 h-12 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                    <div className="w-12 h-12 rounded-xl bg-orange-500/10 border border-orange-500/20 text-orange-400 flex items-center justify-center shrink-0">
                       <Bike className="w-6 h-6" />
                     </div>
-                    <div className="space-y-1">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <Badge className="font-mono text-sm tracking-wider">{v.license_plate}</Badge>
-                        <h3 className="font-bold text-slate-900 text-lg">
+                    <div className="space-y-1.5">
+                      <div className="flex flex-wrap items-center gap-2.5">
+                        <Badge
+                          variant="outline"
+                          className="font-mono text-sm font-bold tracking-wider rounded-lg border-orange-500/30 bg-orange-500/15 text-orange-300"
+                        >
+                          {v.license_plate}
+                        </Badge>
+                        <h3 className="font-bold text-white text-lg">
                           {v.brand} {v.model} {v.year ? `(${v.year})` : ''}
                         </h3>
                       </div>
-                      <div className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground">
-                        <span className="flex items-center gap-1">
-                          <User className="w-3.5 h-3.5" />
+                      <div className="flex flex-wrap items-center gap-4 text-xs text-slate-400">
+                        <span className="flex items-center gap-1.5">
+                          <User className="w-3.5 h-3.5 text-slate-500" />
                           {v.customers?.full_name || 'Sin propietario'}
                         </span>
                         {v.customers?.phone_whatsapp && (
-                          <span className="flex items-center gap-1">
-                            <Phone className="w-3.5 h-3.5" />
+                          <span className="flex items-center gap-1.5">
+                            <Phone className="w-3.5 h-3.5 text-slate-500" />
                             {v.customers.phone_whatsapp}
                           </span>
                         )}
-                        <span className="flex items-center gap-1 font-semibold text-slate-700">
-                          <History className="w-3.5 h-3.5" />
+                        <span className="flex items-center gap-1.5 font-semibold text-slate-200">
+                          <History className="w-3.5 h-3.5 text-orange-400" />
                           {sortedOrders.length} servicio(s)
                         </span>
                       </div>
@@ -445,9 +509,9 @@ export function VehiclesManager({
                       variant="outline"
                       size="sm"
                       onClick={() => setExpandedId(isExpanded ? null : v.id)}
-                      className="gap-1.5"
+                      className="gap-1.5 rounded-xl border-white/10 bg-white/[0.04] text-slate-200 hover:bg-white/[0.08] hover:text-white hover:border-orange-500/35"
                     >
-                      <History className="w-4 h-4" />
+                      <History className="w-4 h-4 text-orange-400" />
                       Historial
                       {isExpanded ? (
                         <ChevronUp className="w-3.5 h-3.5" />
@@ -461,6 +525,7 @@ export function VehiclesManager({
                       size="icon"
                       aria-label="Editar vehículo"
                       onClick={() => openEditForm(v)}
+                      className="rounded-xl text-slate-400 hover:bg-white/[0.06] hover:text-orange-300"
                     >
                       <Pencil className="w-4 h-4" />
                     </Button>
@@ -472,7 +537,7 @@ export function VehiclesManager({
                           size="sm"
                           disabled={isRowDeleting}
                           onClick={() => handleDelete(v.id)}
-                          className="h-8 px-2.5 text-xs"
+                          className="h-8 rounded-lg px-2.5 text-xs bg-rose-600 hover:bg-rose-500 text-white"
                         >
                           {isRowDeleting ? <Loader2 className="w-3 h-3 animate-spin" /> : 'Eliminar'}
                         </Button>
@@ -482,7 +547,7 @@ export function VehiclesManager({
                           size="sm"
                           disabled={isRowDeleting}
                           onClick={() => setConfirmDeleteId(null)}
-                          className="h-8 px-2 text-xs"
+                          className="h-8 rounded-lg px-2 text-xs text-slate-300 hover:bg-white/[0.06] hover:text-white"
                         >
                           No
                         </Button>
@@ -494,7 +559,7 @@ export function VehiclesManager({
                         size="icon"
                         aria-label="Eliminar vehículo"
                         onClick={() => setConfirmDeleteId(v.id)}
-                        className="text-destructive hover:bg-destructive/10"
+                        className="rounded-xl text-rose-400 hover:bg-rose-500/15 hover:text-rose-300"
                       >
                         <Trash2 className="w-4 h-4" />
                       </Button>
@@ -503,54 +568,62 @@ export function VehiclesManager({
                 </div>
 
                 {isExpanded && (
-                  <div className="mt-4 pt-4 border-t border-slate-100 space-y-3">
+                  <div className="mt-4 pt-4 border-t border-white/10 space-y-3">
                     <div className="flex items-center justify-between">
-                      <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500">
+                      <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400">
                         Historial Clínico de Órdenes
                       </h4>
                     </div>
 
                     {sortedOrders.length === 0 ? (
-                      <p className="text-sm text-muted-foreground italic">
+                      <p className="text-sm text-slate-500 italic">
                         Este vehículo aún no tiene órdenes de trabajo registradas.
                       </p>
                     ) : (
-                      <div className="divide-y divide-slate-100 rounded-lg border bg-slate-50/50">
+                      <div className="divide-y divide-white/[0.07] rounded-xl border border-white/10 bg-[#0B0D13]">
                         {sortedOrders.map((ord) => {
                           const orderTotal = calcOrderTotal(ord.order_items)
                           return (
                             <div
                               key={ord.id}
-                              className="p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-sm"
+                              className="p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-sm"
                             >
-                              <div className="space-y-0.5">
-                                <div className="flex items-center gap-2">
-                                  <span className="font-mono font-bold text-slate-700">
+                              <div className="space-y-1">
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <span className="font-mono font-bold text-white">
                                     #{ord.order_number ?? ord.id.slice(0, 8)}
                                   </span>
-                                  <Badge variant="outline" className="text-[10px]">
+                                  <Badge
+                                    variant="outline"
+                                    className="text-[10px] border-white/15 bg-white/[0.06] text-slate-200"
+                                  >
                                     {getWorkOrderStatusLabel(ord.status)}
                                   </Badge>
                                   {ord.created_at && (
-                                    <span className="text-xs text-muted-foreground">
+                                    <span className="text-xs text-slate-400">
                                       {new Date(ord.created_at).toLocaleDateString('es-ES')}
                                     </span>
                                   )}
                                 </div>
                                 {ord.customer_notes && (
-                                  <p className="text-xs text-slate-600 line-clamp-1">
+                                  <p className="text-xs text-slate-400 line-clamp-1">
                                     {ord.customer_notes}
                                   </p>
                                 )}
                               </div>
                               <div className="flex items-center gap-3">
-                                <span className="text-xs text-slate-500">
+                                <span className="text-xs font-mono text-slate-400">
                                   {ord.mileage_in?.toLocaleString() ?? 0} km
                                 </span>
-                                <span className="font-bold text-slate-900">
+                                <span className="font-mono font-bold text-orange-400">
                                   ${orderTotal.toLocaleString('es-CL')}
                                 </span>
-                                <Button asChild variant="outline" size="sm" className="h-7 text-xs gap-1">
+                                <Button
+                                  asChild
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-7 rounded-lg text-xs gap-1 border-white/10 bg-white/[0.04] text-slate-200 hover:bg-white/[0.08] hover:border-orange-500/40 hover:text-white"
+                                >
                                   <Link href={`/dashboard/orders/${ord.id}`}>
                                     Ver <ExternalLink className="w-3 h-3" />
                                   </Link>
@@ -569,8 +642,8 @@ export function VehiclesManager({
         })}
 
         {filteredVehicles.length === 0 && (
-          <Card>
-            <CardContent className="py-12 text-center text-muted-foreground">
+          <Card className="rounded-2xl border border-dashed border-white/10 bg-[#101218] shadow-none">
+            <CardContent className="py-12 text-center text-slate-400">
               {vehicles.length === 0
                 ? 'Aún no hay vehículos registrados en este taller.'
                 : 'No se encontraron vehículos que coincidan con tu búsqueda.'}

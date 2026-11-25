@@ -28,10 +28,10 @@ export function CopyTrackerButton({ token }: { token: string }) {
       size="icon"
       title="Copiar enlace de seguimiento"
       aria-label="Copiar enlace de seguimiento"
-      className="h-8 w-8 hover:bg-primary/10 hover:text-primary transition-colors"
+      className="h-8 w-8 rounded-lg text-slate-400 hover:bg-orange-500/15 hover:text-orange-300 transition-colors"
       onClick={handleCopy}
     >
-      {copied ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
+      {copied ? <Check className="h-4 w-4 text-emerald-400" /> : <Copy className="h-4 w-4" />}
     </Button>
   )
 }

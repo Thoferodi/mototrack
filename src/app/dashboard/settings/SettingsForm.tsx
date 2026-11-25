@@ -46,6 +46,9 @@ interface SettingsFormProps {
   }
 }
 
+const DARK_INPUT_CLASS =
+  'h-10 rounded-xl border-white/10 bg-[#0B0D13] text-white placeholder:text-slate-500 focus-visible:border-orange-500/60 focus-visible:ring-orange-500/30 focus-visible:ring-offset-0 [color-scheme:dark]'
+
 export function SettingsForm({ workshop }: SettingsFormProps) {
   const router = useRouter()
   const [isSubmitting, setIsSubmitting] = React.useState(false)
@@ -152,127 +155,149 @@ export function SettingsForm({ workshop }: SettingsFormProps) {
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
       {errorMessage && (
-        <div className="bg-destructive/10 border border-destructive/20 text-destructive text-sm p-4 rounded-xl flex items-center gap-3">
-          <AlertCircle className="w-5 h-5 shrink-0" />
+        <div
+          role="alert"
+          className="bg-rose-500/10 border border-rose-500/30 text-rose-200 text-sm p-4 rounded-xl flex items-center gap-3"
+        >
+          <AlertCircle className="w-5 h-5 shrink-0 text-rose-400" />
           <span className="font-medium">{errorMessage}</span>
         </div>
       )}
 
       {successMessage && (
-        <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 text-sm p-4 rounded-xl flex items-center gap-3">
-          <CheckCircle2 className="w-5 h-5 shrink-0 text-emerald-600" />
+        <div className="bg-emerald-500/10 border border-emerald-500/30 text-emerald-200 text-sm p-4 rounded-xl flex items-center gap-3">
+          <CheckCircle2 className="w-5 h-5 shrink-0 text-emerald-400" />
           <span className="font-medium">{successMessage}</span>
         </div>
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Card className="md:col-span-2">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <Building2 className="w-5 h-5 text-slate-400" />
+        <Card className="md:col-span-2 rounded-2xl border border-white/10 bg-[#101218] text-slate-100 shadow-none overflow-hidden">
+          <CardHeader className="border-b border-white/[0.07]">
+            <CardTitle className="flex items-center gap-2 text-lg text-white">
+              <Building2 className="w-5 h-5 text-orange-400" />
               Información del Taller
             </CardTitle>
-            <CardDescription>
+            <CardDescription className="text-slate-400">
               Configura los datos básicos que verán tus clientes.
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-4 pt-5">
             <div className="space-y-2">
-              <Label htmlFor="name">Nombre del Taller *</Label>
+              <Label htmlFor="name" className="text-xs font-semibold text-slate-300">
+                Nombre del Taller *
+              </Label>
               <Input
                 id="name"
                 {...register('name')}
                 placeholder="Ej. Moto Service Pro"
+                className={DARK_INPUT_CLASS}
                 disabled={isSubmitting}
               />
-              {errors.name && <p className="text-xs text-destructive">{errors.name.message}</p>}
+              {errors.name && <p className="text-xs text-rose-400">{errors.name.message}</p>}
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="phone_whatsapp">WhatsApp de Contacto *</Label>
+                <Label htmlFor="phone_whatsapp" className="text-xs font-semibold text-slate-300">
+                  WhatsApp de Contacto *
+                </Label>
                 <div className="relative">
-                  <Phone className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+                  <Phone className="absolute left-3.5 top-3 h-4 w-4 text-slate-400" />
                   <Input
                     id="phone_whatsapp"
-                    className="pl-9"
+                    className={`${DARK_INPUT_CLASS} pl-10`}
                     {...register('phone_whatsapp')}
                     placeholder="Ej. +57 300 123 4567"
                     disabled={isSubmitting}
                   />
                 </div>
                 {errors.phone_whatsapp && (
-                  <p className="text-xs text-destructive">{errors.phone_whatsapp.message}</p>
+                  <p className="text-xs text-rose-400">{errors.phone_whatsapp.message}</p>
                 )}
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="primary_color">Color Principal de Marca</Label>
-                <div className="flex items-center gap-2">
+                <Label htmlFor="primary_color" className="text-xs font-semibold text-slate-300">
+                  Color Principal de Marca
+                </Label>
+                <div className="flex items-center gap-2.5">
                   <div
-                    className="w-10 h-10 rounded-lg border shadow-sm shrink-0"
+                    className="w-10 h-10 rounded-xl border border-white/20 shadow-sm shrink-0"
                     style={{ backgroundColor: watch('primary_color') }}
                   />
                   <Input
                     id="primary_color"
                     type="color"
-                    className="h-10 w-full cursor-pointer"
+                    className="h-10 w-full cursor-pointer rounded-xl border border-white/10 bg-[#0B0D13] p-1 [color-scheme:dark]"
                     {...register('primary_color')}
                     disabled={isSubmitting}
                   />
-                  <span className="text-xs font-mono text-slate-500 uppercase">
+                  <span className="text-xs font-mono text-slate-300 uppercase shrink-0">
                     {watch('primary_color')}
                   </span>
                 </div>
                 {errors.primary_color && (
-                  <p className="text-xs text-destructive">{errors.primary_color.message}</p>
+                  <p className="text-xs text-rose-400">{errors.primary_color.message}</p>
                 )}
               </div>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="address">Dirección Física *</Label>
+              <Label htmlFor="address" className="text-xs font-semibold text-slate-300">
+                Dirección Física *
+              </Label>
               <div className="relative">
-                <MapPin className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+                <MapPin className="absolute left-3.5 top-3 h-4 w-4 text-slate-400" />
                 <Input
                   id="address"
-                  className="pl-9"
+                  className={`${DARK_INPUT_CLASS} pl-10`}
                   {...register('address')}
                   placeholder="Ej. Av. Principal 123, Ciudad"
                   disabled={isSubmitting}
                 />
               </div>
-              {errors.address && <p className="text-xs text-destructive">{errors.address.message}</p>}
+              {errors.address && <p className="text-xs text-rose-400">{errors.address.message}</p>}
             </div>
           </CardContent>
-          <CardFooter className="border-t bg-slate-50/50 p-4">
-            <Button type="submit" disabled={isSubmitting || isUploading} className="ml-auto">
+          <CardFooter className="border-t border-white/10 bg-[#0B0D13]/70 p-4">
+            <Button
+              type="submit"
+              disabled={isSubmitting || isUploading}
+              className="ml-auto rounded-xl bg-orange-500 hover:bg-orange-400 text-slate-950 font-bold shadow-[0_0_20px_rgba(249,115,22,0.25)]"
+            >
               {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               {isSubmitting ? 'Guardando...' : 'Guardar Cambios'}
             </Button>
           </CardFooter>
         </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <Palette className="w-5 h-5 text-slate-400" />
+        <Card className="rounded-2xl border border-white/10 bg-[#101218] text-slate-100 shadow-none overflow-hidden">
+          <CardHeader className="border-b border-white/[0.07]">
+            <CardTitle className="flex items-center gap-2 text-lg text-white">
+              <Palette className="w-5 h-5 text-orange-400" />
               Logo del Taller
             </CardTitle>
-            <CardDescription>
+            <CardDescription className="text-slate-400">
               Se usará en facturas, dashboard y tracker.
             </CardDescription>
           </CardHeader>
-          <CardContent className="flex flex-col items-center justify-center space-y-4">
-            <div className="relative w-32 h-32 rounded-xl border-2 border-dashed border-slate-200 flex items-center justify-center bg-slate-50 overflow-hidden group">
+          <CardContent className="flex flex-col items-center justify-center space-y-4 pt-6">
+            <div
+              className={`relative w-32 h-32 rounded-2xl border-2 border-dashed flex items-center justify-center overflow-hidden group ${
+                preview
+                  ? 'border-white/25 bg-white/95 p-2 shadow-inner'
+                  : 'border-white/15 bg-[#0B0D13]'
+              }`}
+            >
               {preview ? (
-                <img src={preview} alt="Logo preview" className="w-full h-full object-contain p-2" />
+                <img src={preview} alt="Logo preview" className="w-full h-full object-contain" />
               ) : (
-                <Upload className="w-8 h-8 text-slate-300" />
+                <Upload className="w-8 h-8 text-slate-500" />
               )}
               {isUploading && (
-                <div className="absolute inset-0 bg-white/80 flex items-center justify-center">
-                  <Loader2 className="w-6 h-6 animate-spin text-primary" />
+                <div className="absolute inset-0 bg-[#08090C]/80 backdrop-blur-sm flex items-center justify-center">
+                  <Loader2 className="w-6 h-6 animate-spin text-orange-400" />
                 </div>
               )}
             </div>
@@ -280,9 +305,9 @@ export function SettingsForm({ workshop }: SettingsFormProps) {
             <div className="w-full space-y-2">
               <Label
                 htmlFor="logo-upload"
-                className="flex items-center justify-center gap-2 w-full h-10 px-4 py-2 bg-secondary text-secondary-foreground hover:bg-secondary/80 rounded-md cursor-pointer transition-colors text-sm font-medium"
+                className="flex items-center justify-center gap-2 w-full h-10 px-4 py-2 rounded-xl border border-white/10 bg-white/[0.06] text-slate-200 hover:bg-white/[0.1] hover:border-orange-500/35 hover:text-white cursor-pointer transition-colors text-sm font-medium"
               >
-                <Upload className="w-4 h-4" />
+                <Upload className="w-4 h-4 text-orange-400" />
                 {isUploading ? 'Subiendo...' : preview ? 'Cambiar Logo' : 'Subir Logo'}
               </Label>
               <input
@@ -300,13 +325,13 @@ export function SettingsForm({ workshop }: SettingsFormProps) {
                   size="sm"
                   onClick={handleRemoveLogo}
                   disabled={isUploading || isSubmitting}
-                  className="w-full text-xs text-destructive hover:bg-destructive/10 gap-1.5"
+                  className="w-full rounded-xl text-xs text-rose-400 hover:bg-rose-500/10 hover:text-rose-300 gap-1.5"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
                   Quitar Logo
                 </Button>
               )}
-              <p className="text-[10px] text-center text-slate-400 mt-2">
+              <p className="text-[11px] text-center text-slate-400 mt-2">
                 Recomendado: WebP, Máx 100KB.
               </p>
             </div>

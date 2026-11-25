@@ -44,7 +44,7 @@ export default async function OrdersPage() {
     console.error('Error fetching orders:', error)
     return (
       <div className="p-6">
-        <div className="bg-destructive/10 border border-destructive/20 text-destructive p-4 rounded-xl text-sm font-medium">
+        <div className="bg-rose-500/10 border border-rose-500/30 text-rose-200 p-4 rounded-xl text-sm font-medium">
           Error al cargar las órdenes de trabajo. Intenta recargar la página.
         </div>
       </div>
@@ -55,12 +55,16 @@ export default async function OrdersPage() {
     <div className="p-4 md:p-6 space-y-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Tablero de Órdenes</h1>
-          <p className="text-muted-foreground">
+          <h1 className="text-2xl font-bold tracking-tight text-white">Tablero de Órdenes</h1>
+          <p className="text-sm text-slate-400">
             Gestiona el flujo de trabajo del taller en tiempo real.
           </p>
         </div>
-        <Button asChild size="lg" className="h-12 md:h-10">
+        <Button
+          asChild
+          size="lg"
+          className="h-12 md:h-10 rounded-xl bg-orange-500 hover:bg-orange-400 text-slate-950 font-bold shadow-[0_0_24px_rgba(249,115,22,0.3)] border border-orange-400/50 transition-all"
+        >
           <Link href="/dashboard/orders/new" className="gap-2">
             <Plus className="w-5 h-5" /> Nueva Orden
           </Link>

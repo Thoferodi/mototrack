@@ -53,7 +53,7 @@ export default async function CatalogPage() {
       console.error('Error fetching catalog:', catalogError)
       return (
         <div className="p-6">
-          <div className="bg-destructive/10 border border-destructive/20 text-destructive p-4 rounded-xl text-sm font-medium">
+          <div className="bg-rose-500/10 border border-rose-500/30 text-rose-200 p-4 rounded-xl text-sm font-medium">
             Error al cargar el catálogo del taller.
           </div>
         </div>

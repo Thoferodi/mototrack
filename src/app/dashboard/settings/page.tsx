@@ -23,7 +23,7 @@ export default async function SettingsPage() {
     console.error('Error fetching profile:', profileError)
     return (
       <div className="p-6">
-        <div className="bg-destructive/10 border border-destructive/20 text-destructive p-4 rounded-xl text-sm font-medium">
+        <div className="bg-rose-500/10 border border-rose-500/30 text-rose-200 p-4 rounded-xl text-sm font-medium">
           Error al cargar el perfil del usuario o taller asociado.
         </div>
       </div>
@@ -40,7 +40,7 @@ export default async function SettingsPage() {
     console.error('Error fetching workshop:', workshopError)
     return (
       <div className="p-6">
-        <div className="bg-destructive/10 border border-destructive/20 text-destructive p-4 rounded-xl text-sm font-medium">
+        <div className="bg-rose-500/10 border border-rose-500/30 text-rose-200 p-4 rounded-xl text-sm font-medium">
           Error al cargar la configuración del taller.
         </div>
       </div>
@@ -50,8 +50,8 @@ export default async function SettingsPage() {
   return (
     <div className="p-4 md:p-6 space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">Configuración del Taller</h1>
-        <p className="text-muted-foreground text-sm">
+        <h1 className="text-2xl font-bold tracking-tight text-white">Configuración del Taller</h1>
+        <p className="text-slate-400 text-sm">
           Personaliza la identidad y contacto de tu negocio.
         </p>
       </div>
