@@ -3,6 +3,7 @@
 import { createServerSupabaseClient } from '@/supabase/server'
 import { redirect } from 'next/navigation'
 import { Database } from '@/types/database.types'
+import { isSuperAdminEmail } from '@/app/superadmin/auth'
 
 type UserRole = Database['public']['Enums']['user_role']
 
@@ -39,6 +40,9 @@ export async function signIn(formData: FormData) {
     .single()
 
   if (profileError || !profile) {
+    if (isSuperAdminEmail(data.user.email)) {
+      redirect('/superadmin')
+    }
     // Si no hay perfil, cerramos sesión por seguridad
     await supabase.auth.signOut()
     return { error: 'No se encontró un perfil asociado a esta cuenta' }
