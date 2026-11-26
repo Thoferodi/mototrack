@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { createServerSupabaseClient } from '@/supabase/server'
-import { normalizePlate } from '@/lib/workorder-status'
+import { FUEL_LEVEL_LABELS, isValidUUID, normalizePlate } from '@/lib/workorder-status'
 
 async function getWorkshopContext() {
   const supabase = createServerSupabaseClient()
@@ -232,26 +232,38 @@ export async function ensureMotorcycle(motorcycle: {
   return data.id
 }
 
-const FUEL_LABELS: Record<string, string> = {
-  empty: 'Vacío',
-  low: '1/4',
-  half: '1/2',
-  high: '3/4',
-  full: 'Lleno',
-}
-
 export async function createWorkOrder(payload: {
   motorcycle_id: string
   mileage_in: number
   customer_notes?: string
   fuel_level: string
+  mechanic_id?: string | null
   media_urls: string[]
   signature_url?: string | null
 }) {
   const supabase = createServerSupabaseClient()
   const { workshopId, userId } = await getWorkshopContext()
 
-  const fuelLabel = FUEL_LABELS[payload.fuel_level] || payload.fuel_level
+  let validatedMechanicId: string | null = null
+  const requestedMechanicId = payload.mechanic_id?.trim() || ''
+  if (requestedMechanicId) {
+    if (!isValidUUID(requestedMechanicId)) {
+      throw new Error('Identificador de mecánico inválido.')
+    }
+    const { data: mechanicProfile } = await supabase
+      .from('profiles')
+      .select('id, active')
+      .eq('id', requestedMechanicId)
+      .eq('workshop_id', workshopId)
+      .maybeSingle()
+
+    if (!mechanicProfile || mechanicProfile.active === false) {
+      throw new Error('El mecánico seleccionado no pertenece a este taller o está inactivo.')
+    }
+    validatedMechanicId = mechanicProfile.id
+  }
+
+  const fuelLabel = FUEL_LEVEL_LABELS[payload.fuel_level] || payload.fuel_level
   const trimmedNotes = payload.customer_notes?.trim() || ''
 
   const { data: order, error } = await supabase
@@ -261,6 +273,7 @@ export async function createWorkOrder(payload: {
       motorcycle_id: payload.motorcycle_id,
       mileage_in: payload.mileage_in,
       fuel_level: payload.fuel_level,
+      mechanic_id: validatedMechanicId,
       customer_notes: trimmedNotes || null,
       status: 'received',
     })
@@ -301,6 +314,7 @@ export async function createWorkOrder(payload: {
 
   revalidatePath('/dashboard/orders')
   revalidatePath('/dashboard/vehicles')
+  revalidatePath('/dashboard/performance')
   revalidatePath('/mechanic')
 
   return order

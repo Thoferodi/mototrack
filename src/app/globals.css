@@ -60,3 +60,18 @@
     @apply bg-background text-foreground;
   }
 }
+
+@media print {
+  @page {
+    size: auto;
+    margin: 10mm;
+  }
+
+  html,
+  body {
+    background: #ffffff !important;
+    color: #09090b !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}

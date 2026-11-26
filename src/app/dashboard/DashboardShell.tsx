@@ -15,6 +15,7 @@ import {
   Wrench,
   ExternalLink,
   Loader2,
+  BarChart3,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
@@ -70,6 +71,13 @@ const NAV_ITEMS: NavItem[] = [
     label: 'Catálogo',
     icon: Package,
     matchPrefix: '/dashboard/catalog',
+  },
+  {
+    href: '/dashboard/performance',
+    label: 'Rendimiento',
+    icon: BarChart3,
+    matchPrefix: '/dashboard/performance',
+    allowedRoles: TEAM_ALLOWED_ROLES,
   },
   {
     href: '/dashboard/team',
@@ -220,9 +228,9 @@ export function DashboardShell({ children, workshop, user }: DashboardShellProps
   )
 
   return (
-    <div className="relative min-h-screen flex flex-col md:flex-row bg-[#08090C] text-slate-100 [color-scheme:dark] selection:bg-orange-500/30 selection:text-orange-100">
+    <div className="relative min-h-screen flex flex-col md:flex-row bg-[#08090C] text-slate-100 [color-scheme:dark] selection:bg-orange-500/30 selection:text-orange-100 print:block print:min-h-0 print:bg-white print:text-zinc-950">
       {/* Glow ambiental sutil superior */}
-      <div aria-hidden="true" className="pointer-events-none fixed inset-0 overflow-hidden z-0">
+      <div aria-hidden="true" className="pointer-events-none fixed inset-0 overflow-hidden z-0 print:hidden">
         <div
           className="absolute left-1/2 -top-40 h-[360px] w-[720px] -translate-x-1/2 rounded-full opacity-20 blur-[120px]"
           style={{
@@ -233,12 +241,12 @@ export function DashboardShell({ children, workshop, user }: DashboardShellProps
       </div>
 
       {/* Desktop Sidebar */}
-      <aside className="hidden md:flex md:w-64 md:flex-col md:fixed md:inset-y-0 z-30">
+      <aside className="hidden md:flex md:w-64 md:flex-col md:fixed md:inset-y-0 z-30 print:hidden">
         <SidebarContent />
       </aside>
 
       {/* Mobile Header */}
-      <header className="md:hidden sticky top-0 z-30 h-14 bg-[#0B0D12]/90 backdrop-blur-xl border-b border-white/10 px-4 flex items-center justify-between">
+      <header className="md:hidden sticky top-0 z-30 h-14 bg-[#0B0D12]/90 backdrop-blur-xl border-b border-white/10 px-4 flex items-center justify-between print:hidden">
         <div className="flex items-center gap-2.5 min-w-0">
           {workshop.logoUrl ? (
             <div className="w-8 h-8 rounded-lg bg-white/95 p-0.5 ring-1 ring-white/20 flex items-center justify-center shrink-0 overflow-hidden">
@@ -273,7 +281,7 @@ export function DashboardShell({ children, workshop, user }: DashboardShellProps
 
       {/* Mobile Drawer */}
       {mobileOpen && (
-        <div className="md:hidden fixed inset-0 z-40 flex">
+        <div className="md:hidden fixed inset-0 z-40 flex print:hidden">
           <div
             className="fixed inset-0 bg-black/70 backdrop-blur-sm"
             onClick={() => setMobileOpen(false)}
@@ -285,7 +293,7 @@ export function DashboardShell({ children, workshop, user }: DashboardShellProps
       )}
 
       {/* Main Content */}
-      <main className="relative z-10 flex-1 md:pl-64 min-w-0">{children}</main>
+      <main className="relative z-10 flex-1 md:pl-64 min-w-0 print:pl-0">{children}</main>
     </div>
   )
 }

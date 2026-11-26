@@ -42,3 +42,16 @@ export function parseMediaUrls(mediaUrls: unknown): string[] {
   if (!Array.isArray(mediaUrls)) return []
   return mediaUrls.filter((u): u is string => typeof u === 'string' && u.length > 0)
 }
+
+export const FUEL_LEVEL_LABELS: Record<string, string> = {
+  empty: 'Vacío',
+  low: '1/4',
+  half: '1/2',
+  high: '3/4',
+  full: 'Lleno',
+}
+
+export function getFuelLevelLabel(level: string | null | undefined): string {
+  if (!level) return 'No registrado'
+  return FUEL_LEVEL_LABELS[level] || level
+}

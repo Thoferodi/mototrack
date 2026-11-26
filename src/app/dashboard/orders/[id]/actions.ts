@@ -3,7 +3,7 @@
 import { createServerSupabaseClient } from '@/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { Database } from '@/types/database.types'
-import { getWorkOrderStatusLabel } from '@/lib/workorder-status'
+import { getWorkOrderStatusLabel, isValidUUID } from '@/lib/workorder-status'
 
 type WorkOrderStatus = Database['public']['Enums']['order_status']
 type ItemType = Database['public']['Enums']['item_type']
@@ -68,6 +68,7 @@ export async function updateOrderStatus(
   revalidatePath(`/dashboard/orders/${orderId}`)
   revalidatePath('/dashboard/orders')
   revalidatePath('/dashboard/vehicles')
+  revalidatePath('/dashboard/performance')
   revalidatePath('/mechanic')
   if (updatedOrder?.tracking_token) {
     revalidatePath(`/track/${updatedOrder.tracking_token}`)
@@ -112,6 +113,7 @@ export async function addOrderItem(
   revalidatePath(`/dashboard/orders/${orderId}`)
   revalidatePath('/dashboard/orders')
   revalidatePath('/dashboard/catalog')
+  revalidatePath('/dashboard/performance')
   if (order.tracking_token) {
     revalidatePath(`/track/${order.tracking_token}`)
   }
@@ -141,7 +143,70 @@ export async function deleteOrderItem(itemId: string, orderId: string) {
 
   revalidatePath(`/dashboard/orders/${orderId}`)
   revalidatePath('/dashboard/orders')
+  revalidatePath('/dashboard/performance')
   if (order?.tracking_token) {
     revalidatePath(`/track/${order.tracking_token}`)
   }
+}
+
+export async function assignOrderMechanic(orderId: string, mechanicId: string | null) {
+  const supabase = createServerSupabaseClient()
+  const { workshopId } = await getWorkshopId()
+
+  const { data: order, error: orderError } = await supabase
+    .from('work_orders')
+    .select('id, tracking_token')
+    .eq('id', orderId)
+    .eq('workshop_id', workshopId)
+    .single()
+
+  if (orderError || !order) {
+    throw new Error('Orden de trabajo no encontrada.')
+  }
+
+  let validatedMechanicId: string | null = null
+  const requestedId = mechanicId?.trim() || ''
+
+  if (requestedId) {
+    if (!isValidUUID(requestedId)) {
+      throw new Error('Identificador de mecánico inválido.')
+    }
+
+    const { data: mechanicProfile } = await supabase
+      .from('profiles')
+      .select('id, active')
+      .eq('id', requestedId)
+      .eq('workshop_id', workshopId)
+      .maybeSingle()
+
+    if (!mechanicProfile || mechanicProfile.active === false) {
+      throw new Error('El mecánico seleccionado no pertenece a este taller o está inactivo.')
+    }
+
+    validatedMechanicId = mechanicProfile.id
+  }
+
+  const { error: updateError } = await supabase
+    .from('work_orders')
+    .update({
+      mechanic_id: validatedMechanicId,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', orderId)
+    .eq('workshop_id', workshopId)
+
+  if (updateError) {
+    throw new Error(`No se pudo asignar el mecánico: ${updateError.message}`)
+  }
+
+  revalidatePath(`/dashboard/orders/${orderId}`)
+  revalidatePath(`/dashboard/orders/${orderId}/receipt`)
+  revalidatePath('/dashboard/orders')
+  revalidatePath('/dashboard/performance')
+  revalidatePath('/mechanic')
+  if (order.tracking_token) {
+    revalidatePath(`/track/${order.tracking_token}`)
+  }
+
+  return { mechanicId: validatedMechanicId }
 }

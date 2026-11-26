@@ -11,6 +11,19 @@ export default function LoadingOrders() {
         <Skeleton className="h-10 w-36 rounded-xl bg-white/5" />
       </div>
 
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        {[1, 2, 3, 4].map((card) => (
+          <div
+            key={card}
+            className="rounded-2xl border border-white/10 bg-[#101218] p-4 space-y-2.5"
+          >
+            <Skeleton className="h-3 w-28 bg-white/5" />
+            <Skeleton className="h-7 w-20 bg-white/5" />
+            <Skeleton className="h-3 w-24 bg-white/5" />
+          </div>
+        ))}
+      </div>
+
       <div className="flex gap-4 overflow-x-auto pb-4">
         {[1, 2, 3, 4, 5, 6].map((col) => (
           <div

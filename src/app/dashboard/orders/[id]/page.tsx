@@ -1,13 +1,15 @@
 import Link from 'next/link'
 import { createServerSupabaseClient } from '@/supabase/server'
 import { notFound, redirect } from 'next/navigation'
-import { ArrowLeft, ExternalLink, User, Bike, FileText, History } from 'lucide-react'
+import { ArrowLeft, ExternalLink, User, Bike, FileText, History, Printer, Wrench } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { getWorkOrderStatusLabel } from '@/lib/workorder-status'
+import { sortMechanicsFirst, WorkshopMechanicOption } from '@/lib/team'
 import { BudgetManager, CatalogTemplateItem } from './budget-manager'
 import { StatusSelector } from './status-selector'
+import { MechanicSelector } from './mechanic-selector'
 import { Timeline } from './timeline'
 import { CopyTrackerButton } from '../copy-button'
 
@@ -68,23 +70,39 @@ export default async function OrderDetailPage({ params }: PageProps) {
     return notFound()
   }
 
-  const [{ data: workshop }, { data: savedCatalog }, { data: recentItems }] = await Promise.all([
-    supabase
-      .from('workshops')
-      .select('name, slug')
-      .eq('id', order.workshop_id)
-      .single(),
-    supabase
-      .from('catalog_items')
-      .select('id, name, type, default_price')
-      .eq('workshop_id', order.workshop_id)
-      .order('name', { ascending: true }),
-    supabase
-      .from('order_items')
-      .select('id, description, type, unit_price')
-      .eq('workshop_id', order.workshop_id)
-      .order('description', { ascending: true }),
-  ])
+  const [{ data: workshop }, { data: savedCatalog }, { data: recentItems }, { data: workshopMembers }] =
+    await Promise.all([
+      supabase
+        .from('workshops')
+        .select('name, slug')
+        .eq('id', order.workshop_id)
+        .single(),
+      supabase
+        .from('catalog_items')
+        .select('id, name, type, default_price')
+        .eq('workshop_id', order.workshop_id)
+        .order('name', { ascending: true }),
+      supabase
+        .from('order_items')
+        .select('id, description, type, unit_price')
+        .eq('workshop_id', order.workshop_id)
+        .order('description', { ascending: true }),
+      supabase
+        .from('profiles')
+        .select('id, full_name, role, active')
+        .eq('workshop_id', order.workshop_id),
+    ])
+
+  const mechanicOptions: WorkshopMechanicOption[] = sortMechanicsFirst(
+    (workshopMembers || [])
+      .filter((m) => m.active !== false || m.id === order.mechanic_id)
+      .map((m) => ({
+        id: m.id,
+        full_name: m.full_name,
+        role: m.role,
+        active: m.active !== false,
+      }))
+  )
 
   const seen = new Set<string>()
   const catalogItems: CatalogTemplateItem[] = []
@@ -134,22 +152,35 @@ export default async function OrderDetailPage({ params }: PageProps) {
           Volver al tablero
         </Link>
 
-        {order.tracking_token && (
-          <div className="flex items-center gap-2">
-            <CopyTrackerButton token={order.tracking_token} />
-            <Button
-              asChild
-              variant="outline"
-              size="sm"
-              className="gap-1.5 rounded-xl border-white/10 bg-white/[0.04] text-slate-200 hover:bg-white/[0.08] hover:border-orange-500/40 hover:text-white"
-            >
-              <Link href={`/track/${order.tracking_token}`} target="_blank">
-                <span>Ver Live Tracker</span>
-                <ExternalLink className="w-3.5 h-3.5 text-orange-400" />
-              </Link>
-            </Button>
-          </div>
-        )}
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            asChild
+            variant="outline"
+            size="sm"
+            className="gap-1.5 rounded-xl border-white/10 bg-white/[0.04] text-slate-200 hover:bg-white/[0.08] hover:border-orange-500/40 hover:text-white"
+          >
+            <Link href={`/dashboard/orders/${order.id}/receipt`}>
+              <Printer className="w-3.5 h-3.5 text-orange-400" />
+              <span>Comprobante / PDF</span>
+            </Link>
+          </Button>
+          {order.tracking_token && (
+            <>
+              <CopyTrackerButton token={order.tracking_token} />
+              <Button
+                asChild
+                variant="outline"
+                size="sm"
+                className="gap-1.5 rounded-xl border-white/10 bg-white/[0.04] text-slate-200 hover:bg-white/[0.08] hover:border-orange-500/40 hover:text-white"
+              >
+                <Link href={`/track/${order.tracking_token}`} target="_blank">
+                  <span>Ver Live Tracker</span>
+                  <ExternalLink className="w-3.5 h-3.5 text-orange-400" />
+                </Link>
+              </Button>
+            </>
+          )}
+        </div>
       </div>
 
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 rounded-2xl border border-white/10 bg-[#101218] p-5">
@@ -192,6 +223,22 @@ export default async function OrderDetailPage({ params }: PageProps) {
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         {/* Panel Izquierdo: Info Cliente y Moto */}
         <div className="lg:col-span-1 space-y-6 min-w-0">
+          <Card className="rounded-2xl border border-white/10 bg-[#101218] text-slate-100 shadow-none">
+            <CardHeader className="border-b border-white/[0.07] pb-3.5">
+              <CardTitle className="text-base font-bold text-white flex items-center gap-2">
+                <Wrench className="w-4 h-4 text-orange-400" />
+                Técnico Responsable
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="pt-4">
+              <MechanicSelector
+                orderId={order.id}
+                currentMechanicId={order.mechanic_id}
+                mechanics={mechanicOptions}
+              />
+            </CardContent>
+          </Card>
+
           <Card className="rounded-2xl border border-white/10 bg-[#101218] text-slate-100 shadow-none">
             <CardHeader className="border-b border-white/[0.07] pb-3.5">
               <CardTitle className="text-base font-bold text-white flex items-center gap-2">
