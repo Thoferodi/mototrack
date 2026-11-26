@@ -18,12 +18,16 @@ export default async function DashboardLayout({
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('workshop_id, full_name, role')
+    .select('workshop_id, full_name, role, active')
     .eq('id', user.id)
     .single()
 
   if (!profile) {
     redirect('/login')
+  }
+
+  if (profile.active === false) {
+    redirect('/login?error=account_disabled')
   }
 
   if (profile.role === 'mechanic') {

@@ -7,6 +7,7 @@ import {
   ClipboardList,
   Bike,
   Package,
+  Users,
   Settings,
   LogOut,
   Menu,
@@ -36,12 +37,22 @@ interface DashboardShellProps {
 const ROLE_LABELS: Record<string, string> = {
   admin: 'Administrador',
   owner: 'Propietario',
-  manager: 'Administrador',
+  manager: 'Gerente',
   receptionist: 'Recepción',
   mechanic: 'Mecánico',
 }
 
-const NAV_ITEMS = [
+const TEAM_ALLOWED_ROLES = new Set(['owner', 'admin', 'manager'])
+
+interface NavItem {
+  href: string
+  label: string
+  icon: React.ComponentType<{ className?: string }>
+  matchPrefix: string
+  allowedRoles?: Set<string>
+}
+
+const NAV_ITEMS: NavItem[] = [
   {
     href: '/dashboard/orders',
     label: 'Órdenes',
@@ -59,6 +70,13 @@ const NAV_ITEMS = [
     label: 'Catálogo',
     icon: Package,
     matchPrefix: '/dashboard/catalog',
+  },
+  {
+    href: '/dashboard/team',
+    label: 'Equipo',
+    icon: Users,
+    matchPrefix: '/dashboard/team',
+    allowedRoles: TEAM_ALLOWED_ROLES,
   },
   {
     href: '/dashboard/settings',
@@ -139,7 +157,7 @@ export function DashboardShell({ children, workshop, user }: DashboardShellProps
 
       {/* Navigation */}
       <nav className="flex-1 p-3 space-y-1.5 overflow-y-auto">
-        {NAV_ITEMS.map((item) => {
+        {NAV_ITEMS.filter((item) => !item.allowedRoles || item.allowedRoles.has(user.role)).map((item) => {
           const isActive =
             pathname === item.href || pathname.startsWith(`${item.matchPrefix}/`)
           const Icon = item.icon

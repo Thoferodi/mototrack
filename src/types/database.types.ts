@@ -407,7 +407,7 @@ export type Database = {
         | "ready"
         | "delivered"
         | "cancelled"
-      user_role: "admin" | "mechanic" | "receptionist"
+      user_role: "admin" | "mechanic" | "receptionist" | "owner" | "manager"
       workshop_plan: "free" | "pro" | "enterprise"
     }
     CompositeTypes: {
@@ -548,7 +548,7 @@ export const Constants = {
         "delivered",
         "cancelled",
       ],
-      user_role: ["admin", "mechanic", "receptionist"],
+      user_role: ["admin", "mechanic", "receptionist", "owner", "manager"],
       workshop_plan: ["free", "pro", "enterprise"],
     },
   },

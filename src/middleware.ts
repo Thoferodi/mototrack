@@ -67,6 +67,26 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(url)
   }
 
+  if (isProtectedRoute && user) {
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('active')
+      .eq('id', user.id)
+      .maybeSingle()
+
+    if (profile?.active === false) {
+      await supabase.auth.signOut()
+      const url = request.nextUrl.clone()
+      url.pathname = '/login'
+      url.searchParams.set('error', 'account_disabled')
+      const redirectResponse = NextResponse.redirect(url)
+      response.cookies.getAll().forEach((cookie) => {
+        redirectResponse.cookies.set(cookie)
+      })
+      return redirectResponse
+    }
+  }
+
   return response
 }
 

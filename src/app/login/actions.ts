@@ -22,13 +22,19 @@ export async function signIn(formData: FormData) {
   })
 
   if (authError) {
+    const msg = authError.message?.toLowerCase() || ''
+    if (authError.code === 'user_banned' || msg.includes('banned')) {
+      return {
+        error: 'Tu cuenta está desactivada. Contacta al administrador de tu taller.',
+      }
+    }
     return { error: 'Credenciales inválidas o error de conexión' }
   }
 
-  // Consulta de perfil para ruteo inteligente
+  // Consulta de perfil para ruteo inteligente y validación de estado activo
   const { data: profile, error: profileError } = await supabase
     .from('profiles')
-    .select('role')
+    .select('role, active')
     .eq('id', data.user.id)
     .single()
 
@@ -36,6 +42,13 @@ export async function signIn(formData: FormData) {
     // Si no hay perfil, cerramos sesión por seguridad
     await supabase.auth.signOut()
     return { error: 'No se encontró un perfil asociado a esta cuenta' }
+  }
+
+  if (profile.active === false) {
+    await supabase.auth.signOut()
+    return {
+      error: 'Tu cuenta está desactivada. Contacta al administrador de tu taller.',
+    }
   }
 
   const role = String(profile.role)

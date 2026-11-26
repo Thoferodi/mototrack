@@ -9,9 +9,17 @@ import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { Wrench, AlertCircle, Loader2, ArrowLeft, ArrowRight, ShieldCheck } from 'lucide-react'
 
-export default function LoginPage() {
+export default function LoginPage({
+  searchParams,
+}: {
+  searchParams?: { error?: string }
+}) {
   const [isPending, setIsPending] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(() =>
+    searchParams?.error === 'account_disabled'
+      ? 'Tu cuenta está desactivada. Contacta al administrador de tu taller.'
+      : null
+  )
 
   const submitRef = React.useRef<HTMLButtonElement>(null)
   const rawX = useMotionValue(140)
