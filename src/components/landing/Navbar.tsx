@@ -3,7 +3,8 @@
 import * as React from 'react'
 import Link from 'next/link'
 import { AnimatePresence, motion } from 'framer-motion'
-import { Menu, Search, Wrench, X, ArrowRight } from 'lucide-react'
+import { Menu, Search, X, ArrowRight } from 'lucide-react'
+import { MotoTrackBrand } from '@/components/brand/MotoTrackBrand'
 import { GlowButton } from './GlowButton'
 
 const NAV_LINKS = [
@@ -20,16 +21,8 @@ export function Navbar() {
     <header className="sticky top-0 z-50 w-full border-b border-white/[0.08] bg-[#08090C]/75 backdrop-blur-xl supports-[backdrop-filter]:bg-[#08090C]/65">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-3 px-4 sm:px-6 lg:px-8">
         {/* Logo */}
-        <Link href="/" className="flex items-center gap-2.5 shrink-0 group">
-          <div className="relative flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-orange-500 to-amber-600 text-white shadow-[0_0_20px_rgba(249,115,22,0.45)] transition-transform duration-200 group-hover:scale-105">
-            <Wrench className="h-4 w-4" />
-          </div>
-          <div className="flex items-baseline gap-1">
-            <span className="text-lg font-bold tracking-tight text-white">MotoTrack</span>
-            <span className="hidden sm:inline-block rounded-full border border-orange-500/30 bg-orange-500/10 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-orange-400">
-              SaaS
-            </span>
-          </div>
+        <Link href="/" className="flex items-center shrink-0 group">
+          <MotoTrackBrand variant="horizontal" theme="dark" size="md" badge="SaaS" />
         </Link>
 
         {/* Anclas desktop */}

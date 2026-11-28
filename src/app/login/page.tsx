@@ -7,7 +7,8 @@ import { motion, useMotionValue, useSpring } from 'framer-motion'
 import { signIn } from './actions'
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
-import { Wrench, AlertCircle, Loader2, ArrowLeft, ArrowRight, ShieldCheck } from 'lucide-react'
+import { AlertCircle, Loader2, ArrowLeft, ArrowRight, ShieldCheck } from 'lucide-react'
+import { MotoTrackBrand } from '@/components/brand/MotoTrackBrand'
 
 export default function LoginPage({
   searchParams,
@@ -103,18 +104,9 @@ export default function LoginPage({
         </div>
 
         {/* Logo / Branding */}
-        <div className="text-center space-y-2.5">
-          <div className="mx-auto inline-flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-orange-500 to-amber-600 text-white shadow-[0_0_32px_rgba(249,115,22,0.45)] ring-1 ring-white/20">
-            <Wrench className="h-8 w-8" />
-          </div>
-          <div className="flex items-center justify-center gap-2">
-            <h1 className="bg-gradient-to-br from-white via-slate-100 to-orange-200 bg-clip-text text-3xl font-bold tracking-tight text-transparent">
-              MotoTrack
-            </h1>
-            <span className="rounded-full border border-orange-500/30 bg-orange-500/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-orange-400">
-              SaaS
-            </span>
-          </div>
+        <div className="text-center space-y-3">
+          <h1 className="sr-only">MotoTrack</h1>
+          <MotoTrackBrand variant="stacked" theme="dark" size="lg" className="mx-auto" />
           <p className="text-sm font-medium text-slate-400">
             Gestión inteligente para talleres de motocicletas
           </p>
@@ -226,6 +218,24 @@ export default function LoginPage({
                   )}
                 </span>
               </button>
+
+              <p className="text-center text-[11px] leading-relaxed text-slate-400">
+                Al iniciar sesión aceptas los{' '}
+                <Link
+                  href="/legal/terminos"
+                  className="font-semibold text-orange-400 underline underline-offset-4 hover:text-orange-300"
+                >
+                  Términos y Condiciones
+                </Link>{' '}
+                y la{' '}
+                <Link
+                  href="/legal/privacidad"
+                  className="font-semibold text-orange-400 underline underline-offset-4 hover:text-orange-300"
+                >
+                  Política de Privacidad
+                </Link>{' '}
+                de MotoTrack.
+              </p>
             </form>
           </div>
         </div>

@@ -12,7 +12,6 @@ import {
   LogOut,
   Menu,
   X,
-  Wrench,
   ExternalLink,
   Loader2,
   BarChart3,
@@ -136,12 +135,11 @@ export function DashboardShell({ children, workshop, user }: DashboardShellProps
             />
           </div>
         ) : (
-          <div
-            className="w-10 h-10 rounded-xl flex items-center justify-center text-white shrink-0 shadow-[0_0_18px_rgba(249,115,22,0.35)] ring-1 ring-white/15"
-            style={{ backgroundColor: workshop.primaryColor }}
-          >
-            <Wrench className="w-5 h-5" />
-          </div>
+          <img
+            src="/brand/mototrack-icon.png"
+            alt="MotoTrack"
+            className="w-10 h-10 rounded-xl object-cover shrink-0 shadow-[0_0_18px_rgba(255,81,31,0.35)] ring-1 ring-white/15"
+          />
         )}
         <div className="min-w-0 flex-1">
           <p className="font-bold text-white truncate leading-tight">{workshop.name}</p>
@@ -257,12 +255,11 @@ export function DashboardShell({ children, workshop, user }: DashboardShellProps
               />
             </div>
           ) : (
-            <div
-              className="w-8 h-8 rounded-lg flex items-center justify-center text-white shrink-0 ring-1 ring-white/15"
-              style={{ backgroundColor: workshop.primaryColor }}
-            >
-              <Wrench className="w-4 h-4" />
-            </div>
+            <img
+              src="/brand/mototrack-icon.png"
+              alt="MotoTrack"
+              className="w-8 h-8 rounded-lg object-cover shrink-0 ring-1 ring-white/15"
+            />
           )}
           <span className="font-bold text-white truncate">{workshop.name}</span>
         </div>

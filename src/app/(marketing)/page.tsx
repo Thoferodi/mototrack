@@ -12,7 +12,7 @@ import { Footer } from '@/components/landing/Footer'
 export const metadata: Metadata = {
   title: 'MotoTrack SaaS | Software para Talleres de Motos, Kanban y Live Tracker',
   description:
-    'Digitaliza tu taller de motocicletas en Colombia y LATAM: recepción con fotos WebP y firma digital, tablero Kanban, Modo Mecánico Manos Sucias, micrositio propio y aprobación de presupuestos por WhatsApp.',
+    'Digitaliza tu taller de motocicletas en Colombia y LATAM: recepción con fotos WebP y firma electrónica, tablero Kanban, Modo Mecánico Manos Sucias, micrositio propio y aprobación de presupuestos por WhatsApp.',
   keywords: [
     'software taller de motos',
     'gestión taller motocicletas',

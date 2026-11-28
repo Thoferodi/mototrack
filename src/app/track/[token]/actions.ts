@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { createAdminSupabaseClient } from '@/supabase/admin'
 import { isValidUUID } from '@/lib/workorder-status'
+import { formatBogotaDateTime, formatCOP } from '@/lib/format'
 
 export async function updateItemApprovalStatus(
   trackingToken: string,
@@ -42,21 +43,40 @@ export async function updateItemApprovalStatus(
       }
     }
 
-    // 3. Actualizar la aprobación del ítem validando work_order_id y workshop_id
+    // 3. Consultar estado previo del ítem para evitar duplicar eventos en bitácora
     const approvedValue = status === 'approved'
-    const { data: updatedItem, error: updateError } = await supabase
+    const { data: existingItem, error: existingItemError } = await supabase
       .from('order_items')
-      .update({ approved: approvedValue })
+      .select('id, description, quantity, unit_price, approved')
       .eq('id', itemId)
       .eq('work_order_id', order.id)
       .eq('workshop_id', order.workshop_id)
-      .select('id')
       .maybeSingle()
 
-    if (updateError || !updatedItem) {
+    if (existingItemError || !existingItem) {
       return {
         success: false,
-        error: 'No se pudo actualizar el estado del ítem en el presupuesto.',
+        error: 'No se encontró el ítem solicitado en este presupuesto.',
+      }
+    }
+
+    const statusChanged = existingItem.approved !== approvedValue
+
+    if (statusChanged) {
+      const { data: updatedItem, error: updateError } = await supabase
+        .from('order_items')
+        .update({ approved: approvedValue })
+        .eq('id', itemId)
+        .eq('work_order_id', order.id)
+        .eq('workshop_id', order.workshop_id)
+        .select('id')
+        .maybeSingle()
+
+      if (updateError || !updatedItem) {
+        return {
+          success: false,
+          error: 'No se pudo actualizar el estado del ítem en el presupuesto.',
+        }
       }
     }
 
@@ -79,10 +99,35 @@ export async function updateItemApprovalStatus(
       return acc + Number(item.quantity ?? 1) * Number(item.unit_price ?? 0)
     }, 0)
 
+    const nowIso = new Date().toISOString()
+
+    // 5. Registrar evento inmutable en order_timeline_events solo si hubo cambio real
+    if (statusChanged) {
+      const itemSubtotal =
+        Number(existingItem.quantity ?? 1) * Number(existingItem.unit_price ?? 0)
+      const actionVerb = approvedValue ? 'aprobó' : 'rechazó'
+      const timestampText = formatBogotaDateTime(nowIso)
+
+      const { error: timelineError } = await supabase
+        .from('order_timeline_events')
+        .insert({
+          work_order_id: order.id,
+          workshop_id: order.workshop_id,
+          status_snapshot: order.status,
+          public_comment: `Cliente ${actionVerb} el ítem "${existingItem.description}" (${formatCOP(itemSubtotal)} COP) el ${timestampText} (autorización electrónica Ley 527 de 1999).`,
+          media_urls: [],
+          created_by: null,
+        })
+
+      if (timelineError) {
+        console.error('Error logging client approval event:', timelineError)
+      }
+    }
+
     const { error: touchError } = await supabase
       .from('work_orders')
       .update({
-        updated_at: new Date().toISOString(),
+        updated_at: nowIso,
       })
       .eq('id', order.id)
       .eq('workshop_id', order.workshop_id)

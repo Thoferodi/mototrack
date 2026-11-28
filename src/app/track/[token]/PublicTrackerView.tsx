@@ -25,6 +25,7 @@ import {
   parseMediaUrls,
 } from '@/lib/workorder-status'
 import { PublicBudgetCard, PublicBudgetItem } from './PublicBudgetCard'
+import { MotoTrackBrand } from '@/components/brand/MotoTrackBrand'
 
 const statusConfig: Record<
   WorkOrderStatus,
@@ -406,10 +407,35 @@ export async function PublicTrackerView({ token, workshopSlug }: PublicTrackerVi
         )}
       </main>
 
-      <footer className="max-w-2xl mx-auto px-6 py-12 text-center text-muted-foreground">
-        <p className="text-[10px] font-bold uppercase tracking-widest">
-          Desarrollado por MotoTrack SaaS
+      <footer className="max-w-2xl mx-auto px-6 py-10 text-center text-muted-foreground space-y-2.5">
+        <p className="text-xs leading-relaxed text-slate-500">
+          <span className="font-semibold text-slate-700">
+            {order.workshops?.name || 'El taller'}
+          </span>{' '}
+          es el Responsable del Tratamiento de los datos de esta orden; MotoTrack actúa únicamente
+          como proveedor tecnológico (Encargado).
         </p>
+        <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-[11px] font-medium text-slate-500">
+          <Link
+            href="/legal/privacidad"
+            className="underline decoration-slate-300 underline-offset-4 hover:text-slate-800"
+          >
+            Política de Privacidad
+          </Link>
+          <span aria-hidden="true">·</span>
+          <Link
+            href="/legal/terminos"
+            className="underline decoration-slate-300 underline-offset-4 hover:text-slate-800"
+          >
+            Términos y Condiciones
+          </Link>
+        </div>
+        <div className="pt-1 flex items-center justify-center gap-2 text-xs text-slate-500">
+          <span>Impulsado por</span>
+          <Link href="/" className="inline-flex items-center transition-opacity hover:opacity-80">
+            <MotoTrackBrand variant="horizontal" theme="light" size="xs" />
+          </Link>
+        </div>
       </footer>
     </div>
   )

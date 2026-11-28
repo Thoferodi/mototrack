@@ -92,7 +92,7 @@ export function BentoFeatures() {
 
         {/* Bento Grid Asimétrico de 6 tarjetas */}
         <div className="mt-14 grid grid-cols-1 gap-5 md:grid-cols-6 lg:grid-cols-12">
-          {/* 1. Recepción con fotos WebP y firma digital */}
+          {/* 1. Recepción con fotos WebP y firma electrónica */}
           <SpotlightCard className="md:col-span-6 lg:col-span-7" delay={0.02}>
             <div className="rounded-xl border border-white/10 bg-[#07090D] p-4">
               <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/[0.07] pb-3">
@@ -144,7 +144,7 @@ export function BentoFeatures() {
 
             <div>
               <h3 className="text-lg font-bold text-white">
-                Recepción con fotos WebP y firma digital
+                Recepción con fotos WebP y firma electrónica
               </h3>
               <p className="mt-1.5 text-sm leading-relaxed text-slate-400">
                 Documenta estado físico, kilometraje y nivel de combustible en segundos. Comprime

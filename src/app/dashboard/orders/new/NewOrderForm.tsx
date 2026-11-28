@@ -56,6 +56,10 @@ const formSchema = z.object({
   fuel_level: z.enum(['empty', 'low', 'half', 'high', 'full']),
   mechanic_id: z.string().optional(),
   description: z.string().optional(),
+  legal_consent: z.boolean().refine((val) => val === true, {
+    message:
+      'Debes confirmar la autorización de ingreso, firma electrónica y tratamiento de datos del cliente.',
+  }),
 })
 
 type FormValues = z.infer<typeof formSchema>
@@ -116,6 +120,7 @@ export function NewOrderForm({
       fuel_level: 'half',
       mileage: 0,
       mechanic_id: '',
+      legal_consent: false,
     },
   })
 
@@ -193,8 +198,15 @@ export function NewOrderForm({
     setSubmitError(null)
     setSignatureError(null)
 
+    if (!values.legal_consent) {
+      setSubmitError(
+        'Debes confirmar la autorización de ingreso, firma electrónica y tratamiento de datos del cliente.'
+      )
+      return
+    }
+
     if (!sigCanvas.current || sigCanvas.current.isEmpty()) {
-      setSignatureError('La firma del cliente es obligatoria para registrar el ingreso.')
+      setSignatureError('La firma electrónica del cliente es obligatoria para registrar el ingreso.')
       return
     }
 
@@ -227,7 +239,7 @@ export function NewOrderForm({
         mediaUrls.push(url)
       }
 
-      // 3. Guardar Firma Digital en Storage
+      // 3. Guardar Firma Electrónica en Storage
       const signatureDataUrl = sigCanvas.current.toDataURL('image/png')
       const signatureUrl = await uploadSignatureDataUrl(
         signatureDataUrl,
@@ -243,6 +255,7 @@ export function NewOrderForm({
         mechanic_id: values.mechanic_id || null,
         media_urls: mediaUrls,
         signature_url: signatureUrl,
+        legalConsent: values.legal_consent,
       })
 
       router.push(`/dashboard/orders/${order.id}`)
@@ -610,17 +623,63 @@ export function NewOrderForm({
           </CardContent>
         </Card>
 
-        {/* Paso 4: Firma Digital */}
+        {/* Paso 4: Firma Electrónica */}
         <Card className="rounded-2xl border border-white/10 bg-[#101218] text-slate-100 shadow-none overflow-hidden">
           <CardHeader className="border-b border-white/[0.07]">
             <CardTitle className="flex items-center gap-2 text-lg text-white">
-              <PenTool className="w-5 h-5 text-orange-400" /> Firma de Recepción *
+              <PenTool className="w-5 h-5 text-orange-400" /> Firma Electrónica de Recepción *
             </CardTitle>
             <CardDescription className="text-slate-400">
-              El cliente debe firmar para confirmar el estado de ingreso
+              El cliente debe confirmar la autorización y firmar para registrar el estado de ingreso
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-3 pt-5">
+          <CardContent className="space-y-4 pt-5">
+            {/* Checkbox obligatorio de consentimiento legal encima del lienzo de firma */}
+            <div
+              className={cn(
+                'rounded-xl border p-3.5 transition-colors',
+                errors.legal_consent
+                  ? 'border-rose-500/50 bg-rose-500/[0.08]'
+                  : 'border-white/15 bg-[#0B0D13]'
+              )}
+            >
+              <label
+                htmlFor="legal_consent"
+                className="flex items-start gap-3 cursor-pointer select-none"
+              >
+                <input
+                  id="legal_consent"
+                  type="checkbox"
+                  disabled={isSubmitting}
+                  {...register('legal_consent')}
+                  className="mt-0.5 h-4 w-4 shrink-0 rounded border-white/30 bg-[#101218] text-orange-500 accent-orange-500 focus:ring-2 focus:ring-orange-500/40"
+                />
+                <span className="text-xs leading-relaxed text-slate-200">
+                  Confirmo que el cliente autoriza el ingreso de la motocicleta, acepta la validez
+                  de esta firma electrónica (Ley 527 de 1999 y Decreto 2364 de 2012) y autoriza al
+                  taller el tratamiento de sus datos personales para el seguimiento de la orden (las
+                  fotos de evidencia se conservan automáticamente durante 90 días).{' '}
+                  <Link
+                    href="/legal/privacidad"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="font-semibold text-orange-400 underline underline-offset-4 hover:text-orange-300"
+                  >
+                    Ver Política de Privacidad
+                  </Link>
+                </span>
+              </label>
+              {errors.legal_consent && (
+                <p
+                  role="alert"
+                  className="mt-2.5 flex items-center gap-1.5 text-xs font-medium text-rose-400"
+                >
+                  <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                  {errors.legal_consent.message}
+                </p>
+              )}
+            </div>
+
             <div className="rounded-xl border border-white/15 bg-[#0B0D13] p-3 space-y-2.5">
               <div className="flex items-center justify-between text-[11px] font-medium text-slate-400">
                 <span>Área de firma del cliente</span>

@@ -455,9 +455,13 @@ export default async function OrderReceiptPage({ params }: ReceiptPageProps) {
                   </div>
                 ) : (
                   <div className="h-20 rounded-lg border border-dashed border-zinc-300 bg-zinc-50 flex items-center justify-center text-[11px] text-zinc-500">
-                    Sin firma digital de recepción registrada
+                    Sin firma electrónica de recepción registrada
                   </div>
                 )}
+                <p className="text-[10px] leading-snug text-zinc-600">
+                  Ingreso autorizado mediante firma electrónica. Evidencia fotográfica disponible en
+                  línea durante 90 días calendario.
+                </p>
               </div>
 
               <div className="pt-2 space-y-1">
@@ -489,6 +493,15 @@ export default async function OrderReceiptPage({ params }: ReceiptPageProps) {
               </div>
             </div>
           </footer>
+
+          {/* Pie legal y aclaración tributaria DIAN */}
+          <div className="border-t border-zinc-200 pt-3 text-center break-inside-avoid">
+            <p className="text-[10px] leading-snug text-zinc-600">
+              Comprobante interno de orden de servicio. Este documento tiene carácter
+              exclusivamente operativo y NO constituye Factura Electrónica de Venta ni documento
+              equivalente ante la DIAN (Resolución 000165 de 2023).
+            </p>
+          </div>
         </article>
       </div>
     </div>

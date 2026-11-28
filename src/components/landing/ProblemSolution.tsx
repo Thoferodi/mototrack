@@ -24,7 +24,7 @@ const SOLUTIONS = [
     desc: 'Cada ingreso queda ligado a la moto y cliente, con tablero Kanban y estados claros en vivo.',
   },
   {
-    title: 'Evidencia WebP en 4 ángulos + firma digital',
+    title: 'Evidencia WebP en 4 ángulos + firma electrónica',
     desc: 'Respaldo fotográfico liviano y firma de entrega en pantalla desde el primer minuto.',
   },
   {

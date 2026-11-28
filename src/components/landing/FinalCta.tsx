@@ -1,7 +1,7 @@
 'use client'
 
 import { motion } from 'framer-motion'
-import { ArrowRight, ExternalLink, Wrench } from 'lucide-react'
+import { ArrowRight, ExternalLink } from 'lucide-react'
 import { GlowButton } from './GlowButton'
 
 export function FinalCta() {
@@ -37,7 +37,13 @@ export function FinalCta() {
               }}
             />
             <div className="relative flex h-20 w-20 items-center justify-center rounded-full bg-[#0A0C11]">
-              <Wrench className="h-8 w-8 text-orange-400" />
+              <img
+                src="/brand/mototrack-mark-dark.png"
+                alt="MotoTrack"
+                width={650}
+                height={352}
+                className="h-9 w-auto object-contain select-none"
+              />
             </div>
           </div>
 

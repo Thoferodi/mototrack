@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { createServerSupabaseClient } from '@/supabase/server'
 import { FUEL_LEVEL_LABELS, isValidUUID, normalizePlate } from '@/lib/workorder-status'
+import { formatBogotaDateTime } from '@/lib/format'
 
 async function getWorkshopContext() {
   const supabase = createServerSupabaseClient()
@@ -240,7 +241,14 @@ export async function createWorkOrder(payload: {
   mechanic_id?: string | null
   media_urls: string[]
   signature_url?: string | null
+  legalConsent: boolean
 }) {
+  if (payload.legalConsent !== true) {
+    throw new Error(
+      'Debe confirmar la autorización de ingreso, firma electrónica y tratamiento de datos del cliente.'
+    )
+  }
+
   const supabase = createServerSupabaseClient()
   const { workshopId, userId } = await getWorkshopContext()
 
@@ -289,9 +297,11 @@ export async function createWorkOrder(payload: {
     ...(payload.signature_url ? [payload.signature_url] : []),
   ]
 
+  const consentTimestamp = formatBogotaDateTime(new Date().toISOString())
   const timelineComment = [
     `Ingreso registrado (Combustible: ${fuelLabel}).`,
-    payload.signature_url ? 'Firma digital de conformidad guardada.' : null,
+    payload.signature_url ? 'Firma electrónica de conformidad guardada.' : null,
+    `Autorización de ingreso, firma electrónica y tratamiento de datos registrada (${consentTimestamp}).`,
     trimmedNotes ? `Notas: ${trimmedNotes}` : null,
   ]
     .filter(Boolean)

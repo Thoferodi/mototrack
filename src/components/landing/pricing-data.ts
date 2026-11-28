@@ -41,7 +41,7 @@ export const PRICING_PLANS: PricingPlan[] = [
       '50 ítems en catálogo de repuestos',
     ],
     features: [
-      'Recepción con fotos WebP y firma digital',
+      'Recepción con fotos WebP y firma electrónica',
       'Tablero Kanban de estados en tiempo real',
       'Modo Mecánico "Manos Sucias" móvil',
       'Portal Live Tracker por enlace único (/track)',

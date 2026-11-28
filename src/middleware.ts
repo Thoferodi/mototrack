@@ -54,12 +54,18 @@ export async function middleware(request: NextRequest) {
     }
   )
 
+  // Public legal routes: always accessible without session or auth refresh
+  const pathname = request.nextUrl.pathname
+  if (pathname === '/legal' || pathname.startsWith('/legal/')) {
+    return response
+  }
+
   // Refresh session if expired - mandatory for SSR
   const { data: { user } } = await supabase.auth.getUser()
 
   // Protected routes logic
-  const isProtectedRoute = request.nextUrl.pathname.startsWith('/dashboard') || 
-                           request.nextUrl.pathname.startsWith('/mechanic')
+  const isProtectedRoute = pathname.startsWith('/dashboard') || 
+                           pathname.startsWith('/mechanic')
 
   if (isProtectedRoute && !user) {
     const url = request.nextUrl.clone()

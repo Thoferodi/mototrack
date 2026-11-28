@@ -184,6 +184,11 @@ export function PublicBudgetCard({
           </table>
         </div>
 
+        <div className="border-t border-slate-100 bg-slate-50/80 px-4 py-2.5 text-[11px] leading-snug text-slate-600">
+          Al aprobar un ítem emites una autorización electrónica válida como mensaje de datos
+          (Ley 527 de 1999) con registro de fecha y hora.
+        </div>
+
         <div className="bg-slate-900 p-4 flex justify-between items-center text-white">
           <div>
             <span className="text-sm font-bold uppercase tracking-wider opacity-80 block">

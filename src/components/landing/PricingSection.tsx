@@ -1,10 +1,12 @@
 'use client'
 
 import * as React from 'react'
+import Link from 'next/link'
 import { motion } from 'framer-motion'
 import { ArrowRight, Check, Sparkles } from 'lucide-react'
 import { GlowButton } from './GlowButton'
 import { formatCOP, PRICING_PLANS } from './pricing-data'
+import { LEGAL_CONFIG } from '@/lib/legal-config'
 
 export function PricingSection() {
   const [annual, setAnnual] = React.useState(true)
@@ -172,6 +174,26 @@ export function PricingSection() {
               </motion.div>
             )
           })}
+        </div>
+
+        {/* Nota de transparencia tributaria y comercial */}
+        <div className="mx-auto mt-8 max-w-4xl rounded-2xl border border-white/10 bg-[#101218]/80 px-5 py-4 text-center text-xs leading-relaxed text-slate-400">
+          <p>
+            Precios expresados en pesos colombianos (COP); las equivalencias en USD son
+            referenciales. Tratamiento tributario e IVA aplicables según el régimen fiscal vigente
+            y la exclusión de servicios de computación en la nube (cloud) cuando proceda en
+            Colombia. La prueba gratuita tiene una vigencia de{' '}
+            <span className="font-semibold text-slate-200">{LEGAL_CONFIG.trialDays} días</span> sin
+            cláusula de permanencia; implementaciones asistidas pueden estar sujetas a cargo único
+            de activación informado previamente. Consulta las condiciones completas en nuestros{' '}
+            <Link
+              href="/legal/terminos"
+              className="font-semibold text-orange-400 underline underline-offset-4 hover:text-orange-300"
+            >
+              Términos y Condiciones
+            </Link>
+            .
+          </p>
         </div>
       </div>
     </section>

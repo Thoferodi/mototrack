@@ -28,9 +28,9 @@ import {
   Sparkles,
   UserCheck,
   Users,
-  Wrench,
   X,
 } from 'lucide-react'
+import { MotoTrackBrand } from '@/components/brand/MotoTrackBrand'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -363,11 +363,8 @@ export function OnboardingManager({
         {/* Top Bar */}
         <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-white/10">
           <div className="space-y-1.5">
-            <div className="flex flex-wrap items-center gap-2">
-              <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-orange-500 to-amber-600 text-white flex items-center justify-center shadow-[0_0_20px_rgba(249,115,22,0.35)]">
-                <Wrench className="w-4 h-4" />
-              </div>
-              <span className="text-sm font-bold tracking-tight text-white">MotoTrack</span>
+            <div className="flex flex-wrap items-center gap-2.5">
+              <MotoTrackBrand variant="horizontal" theme="dark" size="sm" />
               <Badge
                 variant="outline"
                 className="border-orange-500/35 bg-orange-500/15 text-orange-300 text-[10px] font-bold uppercase tracking-wider gap-1"

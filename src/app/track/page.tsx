@@ -11,9 +11,9 @@ import {
   Hash,
   ArrowLeft,
   AlertCircle,
-  Wrench,
   ShieldCheck,
 } from 'lucide-react'
+import { MotoTrackBrand } from '@/components/brand/MotoTrackBrand'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -108,16 +108,8 @@ export default function GlobalTrackPage() {
       {/* Header continuo con Navbar de la landing */}
       <nav className="sticky top-0 z-40 h-16 border-b border-white/[0.08] bg-[#08090C]/75 backdrop-blur-xl supports-[backdrop-filter]:bg-[#08090C]/65 flex items-center px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto w-full flex items-center justify-between gap-3">
-          <Link href="/" className="flex items-center gap-2.5 group">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-orange-500 to-amber-600 text-white shadow-[0_0_20px_rgba(249,115,22,0.45)] transition-transform duration-200 group-hover:scale-105">
-              <Wrench className="h-4 w-4" />
-            </div>
-            <div className="flex items-baseline gap-1.5">
-              <span className="text-lg font-bold tracking-tight text-white">MotoTrack</span>
-              <span className="hidden sm:inline-block rounded-full border border-orange-500/30 bg-orange-500/10 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-orange-400">
-                Live Tracker
-              </span>
-            </div>
+          <Link href="/" className="flex items-center group shrink-0">
+            <MotoTrackBrand variant="horizontal" theme="dark" size="md" badge="Live Tracker" />
           </Link>
 
           <Link
@@ -282,8 +274,23 @@ export default function GlobalTrackPage() {
           </Card>
         </div>
 
-        <div className="mt-10 text-center text-xs sm:text-sm text-slate-400">
+        <div className="mt-10 text-center text-xs sm:text-sm text-slate-400 space-y-3">
           <p>¿No tienes un código? Contacta a tu taller para que te lo envíen por WhatsApp.</p>
+          <p className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-xs text-slate-500">
+            <Link
+              href="/legal/privacidad"
+              className="underline decoration-white/15 underline-offset-4 transition-colors hover:text-orange-300"
+            >
+              Política de Privacidad
+            </Link>
+            <span aria-hidden="true">·</span>
+            <Link
+              href="/legal/terminos"
+              className="underline decoration-white/15 underline-offset-4 transition-colors hover:text-orange-300"
+            >
+              Términos y Condiciones
+            </Link>
+          </p>
         </div>
       </main>
     </div>

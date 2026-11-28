@@ -6,7 +6,8 @@ import { isValidUUID, normalizePlate } from '@/lib/workorder-status'
 export async function globalSearchOrder(
   searchQuery: string,
   last4Phone?: string,
-  searchType?: 'plate' | 'token'
+  searchType?: 'plate' | 'token',
+  workshopId?: string
 ): Promise<{ success?: boolean; token?: string; error?: string }> {
   const cleanQuery = searchQuery.trim()
   if (!cleanQuery) {
@@ -55,7 +56,7 @@ export async function globalSearchOrder(
     new Set([normalizedPlate, cleanQuery.toUpperCase()])
   )
 
-  const { data: motorcycles, error: motoError } = await supabase
+  let motoQuery = supabase
     .from('motorcycles')
     .select(`
       id,
@@ -65,6 +66,12 @@ export async function globalSearchOrder(
       )
     `)
     .in('license_plate', plateVariants)
+
+  if (workshopId) {
+    motoQuery = motoQuery.eq('workshop_id', workshopId)
+  }
+
+  const { data: motorcycles, error: motoError } = await motoQuery
 
   if (motoError || !motorcycles || motorcycles.length === 0) {
     return { error: 'No se encontró ninguna orden con esa placa y teléfono.' }
