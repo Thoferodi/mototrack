@@ -5,7 +5,7 @@ import { ArrowLeft, ExternalLink, User, Bike, FileText, History, Printer, Wrench
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { getWorkOrderStatusLabel } from '@/lib/workorder-status'
+import { getWorkOrderStatusLabel, isValidUUID } from '@/lib/workorder-status'
 import { sortMechanicsFirst, WorkshopMechanicOption } from '@/lib/team'
 import { BudgetManager, CatalogTemplateItem } from './budget-manager'
 import { StatusSelector } from './status-selector'
@@ -40,14 +40,27 @@ export default async function OrderDetailPage({ params }: PageProps) {
     redirect('/login')
   }
 
+  // Validar UUID antes de consultar (evita fuga de errores PostgreSQL al cliente)
+  if (!isValidUUID(params.id)) {
+    return notFound()
+  }
+
   const { data: profile } = await supabase
     .from('profiles')
-    .select('workshop_id')
+    .select('workshop_id, role, active')
     .eq('id', user.id)
     .single()
 
   if (!profile || !profile.workshop_id) {
     redirect('/login')
+  }
+
+  if (profile.active === false) {
+    redirect('/login?error=account_disabled')
+  }
+
+  if (profile.role === 'mechanic') {
+    redirect('/mechanic')
   }
 
   const { data: order, error } = await supabase
@@ -66,7 +79,6 @@ export default async function OrderDetailPage({ params }: PageProps) {
     .single()
 
   if (error || !order) {
-    console.error('Error fetching order:', error)
     return notFound()
   }
 

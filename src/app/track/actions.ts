@@ -2,6 +2,13 @@
 
 import { createAdminSupabaseClient } from '@/supabase/admin'
 import { isValidUUID, normalizePlate } from '@/lib/workorder-status'
+import { sanitizePostgrestSearch } from '@/lib/sanitize'
+import { headers } from 'next/headers'
+import { checkRateLimit, getClientIp } from '@/lib/rate-limit'
+
+// Rate limiting para búsquedas públicas: máx 15 por minuto por IP
+const SEARCH_WINDOW_MS = 60 * 1000
+const SEARCH_MAX_REQUESTS = 15
 
 export async function globalSearchOrder(
   searchQuery: string,
@@ -9,7 +16,25 @@ export async function globalSearchOrder(
   searchType?: 'plate' | 'token',
   workshopId?: string
 ): Promise<{ success?: boolean; token?: string; error?: string }> {
-  const cleanQuery = searchQuery.trim()
+  // Rate limiting por IP
+  const headersList = headers()
+  const clientIp = getClientIp(headersList as unknown as Headers)
+  const rateLimitCheck = checkRateLimit({
+    action: 'search_order',
+    identifier: clientIp,
+    limit: SEARCH_MAX_REQUESTS,
+    windowMs: SEARCH_WINDOW_MS,
+  })
+
+  if (!rateLimitCheck.allowed) {
+    return { error: 'Demasiadas búsquedas. Por favor espera un momento antes de intentar de nuevo.' }
+  }
+
+  if (workshopId && !isValidUUID(workshopId)) {
+    return { error: 'Identificador de taller inválido.' }
+  }
+
+  const cleanQuery = sanitizePostgrestSearch(searchQuery)
   if (!cleanQuery) {
     return { error: 'Ingresa una placa o código de seguimiento.' }
   }
@@ -24,11 +49,16 @@ export async function globalSearchOrder(
       }
     }
 
-    const { data: workOrder, error } = await supabase
+    let tokenQuery = supabase
       .from('work_orders')
       .select('tracking_token')
       .eq('tracking_token', cleanQuery)
-      .maybeSingle()
+
+    if (workshopId) {
+      tokenQuery = tokenQuery.eq('workshop_id', workshopId)
+    }
+
+    const { data: workOrder, error } = await tokenQuery.maybeSingle()
 
     if (!error && workOrder?.tracking_token) {
       return { success: true, token: workOrder.tracking_token }
@@ -67,7 +97,7 @@ export async function globalSearchOrder(
     `)
     .in('license_plate', plateVariants)
 
-  if (workshopId) {
+  if (workshopId && isValidUUID(workshopId)) {
     motoQuery = motoQuery.eq('workshop_id', workshopId)
   }
 

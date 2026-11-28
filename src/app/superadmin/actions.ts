@@ -105,7 +105,8 @@ function mapAuthCreateError(error: { message?: string; code?: string }): string 
     return 'El correo electrónico proporcionado no es válido.'
   }
 
-  return error.message || 'No se pudo crear la cuenta del propietario en autenticación.'
+  console.error('[superadmin] Auth create error:', code || 'unknown')
+  return 'No se pudo crear la cuenta del propietario en autenticación.'
 }
 
 async function isEmailOccupiedInAuth(
@@ -248,11 +249,10 @@ export async function createWorkshopWithOwner(input: {
         error: `El slug "${slug}" ya fue asignado a otro taller.`,
       }
     }
+    console.error('[superadmin] Error inserting workshop:', workshopInsertError?.code)
     return {
       success: false,
-      error:
-        workshopInsertError?.message ||
-        'No se pudo registrar el nuevo taller en la base de datos.',
+      error: 'No se pudo registrar el nuevo taller en la base de datos.',
     }
   }
 
@@ -319,13 +319,12 @@ export async function createWorkshopWithOwner(input: {
           'No se pudo crear el perfil del propietario en el taller. Se revirtió la creación del taller.',
       }
     }
-  } catch (err: any) {
+  } catch (err: unknown) {
     await rollbackWorkshopAndUser()
     console.error('Unexpected error during superadmin onboarding Paso C:', err)
     return {
       success: false,
       error:
-        err?.message ||
         'Ocurrió un error inesperado al crear el propietario. Se revirtió la creación del taller.',
     }
   }

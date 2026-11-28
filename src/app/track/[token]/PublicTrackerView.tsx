@@ -26,6 +26,7 @@ import {
 } from '@/lib/workorder-status'
 import { PublicBudgetCard, PublicBudgetItem } from './PublicBudgetCard'
 import { MotoTrackBrand } from '@/components/brand/MotoTrackBrand'
+import { validateSafeUrl } from '@/lib/sanitize'
 
 const statusConfig: Record<
   WorkOrderStatus,
@@ -182,7 +183,7 @@ export async function PublicTrackerView({ token, workshopSlug }: PublicTrackerVi
             >
               <ArrowLeft className="w-4 h-4" />
             </Link>
-            {order.workshops?.logo_url ? (
+            {order.workshops?.logo_url && validateSafeUrl(order.workshops.logo_url) ? (
               <img
                 src={order.workshops.logo_url}
                 alt={order.workshops.name}

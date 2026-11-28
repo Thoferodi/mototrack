@@ -17,12 +17,20 @@ export default async function CatalogPage() {
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('workshop_id')
+    .select('workshop_id, role, active')
     .eq('id', user.id)
     .single()
 
   if (!profile || !profile.workshop_id) {
     redirect('/login')
+  }
+
+  if (profile.active === false) {
+    redirect('/login?error=account_disabled')
+  }
+
+  if (profile.role === 'mechanic') {
+    redirect('/mechanic')
   }
 
   const { data: catalogRows, error: catalogError } = await supabase

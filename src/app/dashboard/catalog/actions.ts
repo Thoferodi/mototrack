@@ -4,6 +4,8 @@ import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import { createServerSupabaseClient } from '@/supabase/server'
 import { Database } from '@/types/database.types'
+import { isValidUUID } from '@/lib/workorder-status'
+import { sanitizeText } from '@/lib/sanitize'
 
 export type CatalogItemType = Database['public']['Enums']['item_type']
 
@@ -17,11 +19,14 @@ export interface CatalogItem {
 }
 
 const catalogItemSchema = z.object({
-  name: z.string().trim().min(1, 'El nombre es requerido'),
+  name: z.string().trim().min(1, 'El nombre es requerido').max(200, 'El nombre es demasiado largo'),
   type: z.enum(['spare_part', 'labor']),
-  default_price: z.coerce.number().min(0, 'El precio no puede ser negativo'),
-  sku: z.string().trim().optional(),
-  notes: z.string().trim().optional(),
+  default_price: z.coerce
+    .number()
+    .min(0, 'El precio no puede ser negativo')
+    .max(999_999_999, 'El precio es demasiado alto'),
+  sku: z.string().trim().max(100, 'El SKU es demasiado largo').optional(),
+  notes: z.string().trim().max(1000, 'Las notas son demasiado largas').optional(),
 })
 
 const STAFF_ROLES = new Set(['owner', 'manager', 'admin', 'receptionist'])
@@ -42,21 +47,25 @@ async function getAuthorizedCatalogContext() {
   } = await supabase.auth.getUser()
 
   if (!user) {
-    throw new Error('No autenticado')
+    throw new Error('No autenticado.')
   }
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('workshop_id, role')
+    .select('workshop_id, role, active')
     .eq('id', user.id)
     .single()
 
   if (!profile || !profile.workshop_id) {
-    throw new Error('Perfil de taller no encontrado')
+    throw new Error('Perfil de taller no encontrado.')
+  }
+
+  if (profile.active === false) {
+    throw new Error('Tu cuenta está desactivada.')
   }
 
   if (!STAFF_ROLES.has(String(profile.role))) {
-    throw new Error('No tienes permisos para modificar el catálogo')
+    throw new Error('No tienes permisos para modificar el catálogo.')
   }
 
   return { supabase, workshopId: profile.workshop_id }
@@ -80,11 +89,11 @@ export async function createCatalogItem(input: {
       .from('catalog_items')
       .insert({
         workshop_id: workshopId,
-        name: parsed.data.name,
+        name: sanitizeText(parsed.data.name, 200),
         type: parsed.data.type,
         default_price: parsed.data.default_price,
-        sku: parsed.data.sku || null,
-        notes: parsed.data.notes || null,
+        sku: parsed.data.sku ? sanitizeText(parsed.data.sku, 100) : null,
+        notes: parsed.data.notes ? sanitizeText(parsed.data.notes, 1000) : null,
       })
       .select('id, name, type, default_price, sku, notes')
       .single()
@@ -97,7 +106,8 @@ export async function createCatalogItem(input: {
             'Falta crear la tabla catalog_items en Supabase. Ejecuta supabase/catalog_items.sql en el SQL Editor.',
         }
       }
-      return { success: false, error: error.message }
+      console.error('[catalog] Error creating item:', error.code)
+      return { success: false, error: 'No se pudo crear el ítem en el catálogo.' }
     }
 
     revalidatePath('/dashboard/catalog')
@@ -114,8 +124,12 @@ export async function createCatalogItem(input: {
         notes: data.notes || undefined,
       },
     }
-  } catch (err: any) {
-    return { success: false, error: err?.message || 'Error al crear el ítem' }
+  } catch (err: unknown) {
+    console.error('[catalog] Error in createCatalogItem:', err)
+    return {
+      success: false,
+      error: err instanceof Error ? err.message : 'Error al crear el ítem.',
+    }
   }
 }
 
@@ -129,6 +143,9 @@ export async function updateCatalogItem(
     notes?: string
   }
 ): Promise<{ success: boolean; error?: string }> {
+  if (!isValidUUID(itemId)) {
+    return { success: false, error: 'Identificador de ítem inválido.' }
+  }
   const parsed = catalogItemSchema.safeParse(input)
   if (!parsed.success) {
     return { success: false, error: parsed.error.issues[0]?.message || 'Datos inválidos' }
@@ -139,11 +156,11 @@ export async function updateCatalogItem(
     const { data, error } = await supabase
       .from('catalog_items')
       .update({
-        name: parsed.data.name,
+        name: sanitizeText(parsed.data.name, 200),
         type: parsed.data.type,
         default_price: parsed.data.default_price,
-        sku: parsed.data.sku || null,
-        notes: parsed.data.notes || null,
+        sku: parsed.data.sku ? sanitizeText(parsed.data.sku, 100) : null,
+        notes: parsed.data.notes ? sanitizeText(parsed.data.notes, 1000) : null,
         updated_at: new Date().toISOString(),
       })
       .eq('id', itemId)
@@ -159,7 +176,8 @@ export async function updateCatalogItem(
             'Falta crear la tabla catalog_items en Supabase. Ejecuta supabase/catalog_items.sql en el SQL Editor.',
         }
       }
-      return { success: false, error: error.message }
+      console.error('[catalog] Error updating item:', error.code)
+      return { success: false, error: 'No se pudo actualizar el ítem.' }
     }
 
     if (!data) {
@@ -169,14 +187,21 @@ export async function updateCatalogItem(
     revalidatePath('/dashboard/catalog')
     revalidatePath('/dashboard/orders/[id]', 'page')
     return { success: true }
-  } catch (err: any) {
-    return { success: false, error: err?.message || 'Error al actualizar el ítem' }
+  } catch (err: unknown) {
+    console.error('[catalog] Error in updateCatalogItem:', err)
+    return {
+      success: false,
+      error: err instanceof Error ? err.message : 'Error al actualizar el ítem.',
+    }
   }
 }
 
 export async function deleteCatalogItem(
   itemId: string
 ): Promise<{ success: boolean; error?: string }> {
+  if (!isValidUUID(itemId)) {
+    return { success: false, error: 'Identificador de ítem inválido.' }
+  }
   try {
     const { supabase, workshopId } = await getAuthorizedCatalogContext()
     const { data, error } = await supabase
@@ -195,7 +220,8 @@ export async function deleteCatalogItem(
             'Falta crear la tabla catalog_items en Supabase. Ejecuta supabase/catalog_items.sql en el SQL Editor.',
         }
       }
-      return { success: false, error: error.message }
+      console.error('[catalog] Error deleting item:', error.code)
+      return { success: false, error: 'No se pudo eliminar el ítem.' }
     }
 
     if (!data) {
@@ -205,7 +231,11 @@ export async function deleteCatalogItem(
     revalidatePath('/dashboard/catalog')
     revalidatePath('/dashboard/orders/[id]', 'page')
     return { success: true }
-  } catch (err: any) {
-    return { success: false, error: err?.message || 'Error al eliminar el ítem' }
+  } catch (err: unknown) {
+    console.error('[catalog] Error in deleteCatalogItem:', err)
+    return {
+      success: false,
+      error: err instanceof Error ? err.message : 'Error al eliminar el ítem.',
+    }
   }
 }

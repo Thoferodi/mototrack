@@ -2,19 +2,42 @@
 
 import { createAdminSupabaseClient } from '@/supabase/admin'
 import { normalizePlate } from '@/lib/workorder-status'
+import { sanitizePostgrestSearch } from '@/lib/sanitize'
+import { headers } from 'next/headers'
+import { checkRateLimit, getClientIp } from '@/lib/rate-limit'
+import { isValidUUID } from '@/lib/workorder-status'
+
+// Rate limiting para búsquedas públicas del micrositio
+const SEARCH_WINDOW_MS = 60 * 1000
+const SEARCH_MAX_REQUESTS = 15
 
 export async function searchOrderByPlate(
   workshopId: string,
   plate: string,
   last4Phone: string
 ): Promise<{ success?: boolean; token?: string; error?: string }> {
-  const trimmedPlate = plate.trim()
-  const normalizedPlate = normalizePlate(plate)
-  const cleanLast4 = last4Phone.replace(/\D/g, '')
+  // Rate limiting por IP
+  const headersList = headers()
+  const clientIp = getClientIp(headersList as unknown as Headers)
+  const rateLimitCheck = checkRateLimit({
+    action: 'search_plate',
+    identifier: clientIp,
+    limit: SEARCH_MAX_REQUESTS,
+    windowMs: SEARCH_WINDOW_MS,
+  })
 
-  if (!workshopId) {
+  if (!rateLimitCheck.allowed) {
+    return { error: 'Demasiadas búsquedas. Por favor espera un momento antes de intentar de nuevo.' }
+  }
+
+  if (!workshopId || !isValidUUID(workshopId)) {
     return { error: 'Taller no especificado.' }
   }
+
+  const sanitizedPlate = sanitizePostgrestSearch(plate)
+  const normalizedPlate = normalizePlate(sanitizedPlate)
+  const cleanLast4 = last4Phone.replace(/\D/g, '')
+
   if (!normalizedPlate) {
     return { error: 'Ingresa la placa de tu motocicleta.' }
   }
@@ -24,7 +47,7 @@ export async function searchOrderByPlate(
 
   const supabase = createAdminSupabaseClient()
   const plateVariants = Array.from(
-    new Set([normalizedPlate, trimmedPlate.toUpperCase()])
+    new Set([normalizedPlate, sanitizedPlate.toUpperCase()])
   )
 
   const { data: motorcycles, error: motoError } = await supabase

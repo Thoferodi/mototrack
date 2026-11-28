@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import { createAdminSupabaseClient } from '@/supabase/admin'
+import { validateSafeUrl } from '@/lib/sanitize'
 import { WorkshopSiteClient } from '@/components/workshop-site/WorkshopSiteClient'
 import {
   CURATED_FALLBACK_SERVICES,
@@ -33,7 +34,10 @@ async function fetchPublicWorkshop(
     return null
   }
 
-  return data
+  return {
+    ...data,
+    logo_url: data.logo_url && validateSafeUrl(data.logo_url) ? data.logo_url : null,
+  }
 }
 
 export async function generateMetadata({

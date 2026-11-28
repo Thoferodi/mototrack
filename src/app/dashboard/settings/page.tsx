@@ -15,12 +15,12 @@ export default async function SettingsPage() {
 
   const { data: profile, error: profileError } = await supabase
     .from('profiles')
-    .select('workshop_id')
+    .select('workshop_id, role, active')
     .eq('id', user.id)
     .single()
 
   if (profileError || !profile || !profile.workshop_id) {
-    console.error('Error fetching profile:', profileError)
+    console.error('Error fetching profile:', profileError?.code)
     return (
       <div className="p-6">
         <div className="bg-rose-500/10 border border-rose-500/30 text-rose-200 p-4 rounded-xl text-sm font-medium">
@@ -28,6 +28,14 @@ export default async function SettingsPage() {
         </div>
       </div>
     )
+  }
+
+  if (profile.active === false) {
+    redirect('/login?error=account_disabled')
+  }
+
+  if (profile.role === 'mechanic') {
+    redirect('/mechanic')
   }
 
   const { data: workshop, error: workshopError } = await supabase

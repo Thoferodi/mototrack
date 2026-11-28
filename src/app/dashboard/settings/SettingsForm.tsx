@@ -22,13 +22,12 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card'
-import { createBrowserSupabaseClient } from '@/supabase/browser'
-import { updateWorkshopSettings } from './actions'
+import { updateWorkshopSettings, uploadWorkshopLogo } from './actions'
 
 const formSchema = z.object({
-  name: z.string().min(1, 'El nombre es requerido'),
-  phone_whatsapp: z.string().min(1, 'El WhatsApp es requerido'),
-  address: z.string().min(1, 'La dirección es requerida'),
+  name: z.string().trim().min(2, 'El nombre es requerido').max(100, 'Máximo 100 caracteres'),
+  phone_whatsapp: z.string().trim().min(1, 'El WhatsApp es requerido').max(25, 'Máximo 25 caracteres'),
+  address: z.string().trim().min(1, 'La dirección es requerida').max(200, 'Máximo 200 caracteres'),
   primary_color: z.string().regex(/^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/, 'Color inválido'),
   logo_url: z.string().nullable(),
 })
@@ -56,7 +55,6 @@ export function SettingsForm({ workshop }: SettingsFormProps) {
   const [preview, setPreview] = React.useState<string | null>(workshop.logo_url)
   const [errorMessage, setErrorMessage] = React.useState<string | null>(null)
   const [successMessage, setSuccessMessage] = React.useState<string | null>(null)
-  const supabase = createBrowserSupabaseClient()
 
   const {
     register,
@@ -81,6 +79,14 @@ export function SettingsForm({ workshop }: SettingsFormProps) {
 
     setErrorMessage(null)
     setSuccessMessage(null)
+
+    const allowedClientTypes = new Set(['image/jpeg', 'image/png', 'image/webp'])
+    if (file.type && !allowedClientTypes.has(file.type.toLowerCase())) {
+      setErrorMessage('Solo se permiten imágenes JPEG, PNG o WebP (SVG y otros formatos están bloqueados).')
+      e.target.value = ''
+      return
+    }
+
     setIsUploading(true)
     try {
       const options = {
@@ -90,32 +96,27 @@ export function SettingsForm({ workshop }: SettingsFormProps) {
         fileType: 'image/webp',
       }
 
-      const compressedFile = await imageCompression(file, options)
-      const filePath = `${workshop.id}/logo-${Date.now()}.webp`
+      const compressedBlob = await imageCompression(file, options)
+      const compressedFile = new File([compressedBlob], 'logo.webp', { type: 'image/webp' })
 
-      const { error: uploadError } = await supabase.storage
-        .from('logos')
-        .upload(filePath, compressedFile, {
-          upsert: true,
-          contentType: 'image/webp',
-        })
+      const formData = new FormData()
+      formData.append('file', compressedFile)
 
-      if (uploadError) throw uploadError
+      const result = await uploadWorkshopLogo(formData)
+      if (!result.success || !result.publicUrl) {
+        setErrorMessage(result.error || 'No se pudo subir el logo.')
+        return
+      }
 
-      const {
-        data: { publicUrl },
-      } = supabase.storage.from('logos').getPublicUrl(filePath)
-
-      setValue('logo_url', publicUrl)
-      setPreview(publicUrl)
+      setValue('logo_url', result.publicUrl)
+      setPreview(result.publicUrl)
       setSuccessMessage('Logo cargado. Haz clic en "Guardar Cambios" para confirmar.')
     } catch (error: any) {
       console.error('Error uploading logo:', error)
-      setErrorMessage(
-        error?.message || 'Error al subir el logo. Verifica que el bucket "logos" exista y tenga permisos.'
-      )
+      setErrorMessage('No se pudo procesar o subir la imagen seleccionada. Verifica que sea JPEG, PNG o WebP válido.')
     } finally {
       setIsUploading(false)
+      e.target.value = ''
     }
   }
 
@@ -313,7 +314,7 @@ export function SettingsForm({ workshop }: SettingsFormProps) {
               <input
                 id="logo-upload"
                 type="file"
-                accept="image/*"
+                accept="image/jpeg,image/png,image/webp"
                 className="hidden"
                 onChange={handleLogoUpload}
                 disabled={isUploading || isSubmitting}

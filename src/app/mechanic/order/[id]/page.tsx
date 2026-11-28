@@ -3,7 +3,7 @@ import { notFound, redirect } from 'next/navigation'
 import { ChevronLeft, Wrench, User, Calendar, ImageIcon } from 'lucide-react'
 import { createServerSupabaseClient } from '@/supabase/server'
 import { Badge } from '@/components/ui/badge'
-import { getWorkOrderStatusLabel, parseMediaUrls } from '@/lib/workorder-status'
+import { getWorkOrderStatusLabel, parseMediaUrls, isValidUUID } from '@/lib/workorder-status'
 import { MechanicSignOutButton } from '../../sign-out-button'
 import { StatusControls } from './status-controls'
 import { EvidenceCapture } from './evidence-capture'
@@ -26,14 +26,23 @@ export default async function MechanicOrderDetailPage({ params }: PageProps) {
     redirect('/login')
   }
 
+  // Validar UUID antes de consultar
+  if (!isValidUUID(params.id)) {
+    return notFound()
+  }
+
   const { data: profile } = await supabase
     .from('profiles')
-    .select('id, workshop_id')
+    .select('id, workshop_id, active')
     .eq('id', user.id)
     .single()
 
   if (!profile || !profile.workshop_id) {
     redirect('/login')
+  }
+
+  if (profile.active === false) {
+    redirect('/login?error=account_disabled')
   }
 
   const { data: order, error } = await supabase

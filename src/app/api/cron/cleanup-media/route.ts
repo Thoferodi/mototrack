@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createAdminSupabaseClient } from '@/supabase/admin'
+import { timingSafeEqual } from 'crypto'
 import type { Database } from '@/types/database.types'
 
 export const dynamic = 'force-dynamic'
@@ -40,13 +41,41 @@ function extractEvidencesPath(rawUrl: string, expectedHost: string | null): stri
   }
 }
 
+/**
+ * Comparación de tokens en tiempo constante para prevenir timing attacks.
+ * Ambos buffers deben tener la misma longitud antes de comparar.
+ */
+function timingSafeTokenEqual(a: string, b: string): boolean {
+  try {
+    const bufA = Buffer.from(a, 'utf8')
+    const bufB = Buffer.from(b, 'utf8')
+    // Si las longitudes difieren, se crea un buffer relleno para mantener tiempo constante
+    if (bufA.length !== bufB.length) {
+      // Comparar con un buffer del mismo tamaño que a (siempre falso, pero sin fuga de timing)
+      const paddedB = Buffer.alloc(bufA.length, 0)
+      bufB.copy(paddedB, 0, 0, Math.min(bufB.length, bufA.length))
+      timingSafeEqual(bufA, paddedB)
+      return false
+    }
+    return timingSafeEqual(bufA, bufB)
+  } catch {
+    return false
+  }
+}
+
 export async function GET(request: Request) {
   try {
-    // 1. Exigir autorización estricta con CRON_SECRET (también para dryRun)
-    const authHeader = request.headers.get('authorization')
+    // 1. Exigir autorización estricta con CRON_SECRET mediante comparación de tiempo constante
+    const authHeader = request.headers.get('authorization') || ''
     const cronSecret = process.env.CRON_SECRET
 
-    if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
+    if (!cronSecret) {
+      // No revelar que falta la variable — respuesta genérica
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const expectedToken = `Bearer ${cronSecret}`
+    if (!timingSafeTokenEqual(authHeader, expectedToken)) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
@@ -55,8 +84,9 @@ export async function GET(request: Request) {
     const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 
     if (!supabaseUrl || !serviceRoleKey) {
+      console.error('[cron/cleanup-media] Missing Supabase environment variables')
       return NextResponse.json(
-        { error: 'Missing Supabase environment variables for cron job' },
+        { error: 'Internal server error' },
         { status: 500 }
       )
     }
@@ -95,8 +125,8 @@ export async function GET(request: Request) {
       .not('media_urls', 'is', null)
 
     if (fetchError) {
-      console.error('Error fetching events for cleanup:', fetchError)
-      return NextResponse.json({ error: fetchError.message }, { status: 500 })
+      console.error('[cron/cleanup-media] Error fetching events:', fetchError.code)
+      return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
     }
 
     const candidates: Array<{
@@ -172,7 +202,7 @@ export async function GET(request: Request) {
 
     let deletedFilesCount = 0
     let cleanedEventsCount = 0
-    const errors: Array<{ eventId: string; step: 'storage' | 'database'; message: string }> = []
+    const errors: Array<{ eventId: string; step: 'storage' | 'database' }> = []
 
     for (const candidate of candidates) {
       const { error: storageError } = await supabase.storage
@@ -180,15 +210,8 @@ export async function GET(request: Request) {
         .remove(candidate.filePaths)
 
       if (storageError) {
-        console.error(
-          `Error deleting files from storage for event ${candidate.eventId}:`,
-          storageError
-        )
-        errors.push({
-          eventId: candidate.eventId,
-          step: 'storage',
-          message: storageError.message,
-        })
+        console.error(`[cron/cleanup-media] Storage error for event ${candidate.eventId}:`, storageError.message)
+        errors.push({ eventId: candidate.eventId, step: 'storage' })
         continue
       }
 
@@ -200,12 +223,8 @@ export async function GET(request: Request) {
         .eq('id', candidate.eventId)
 
       if (updateError) {
-        console.error(`Error updating event ${candidate.eventId}:`, updateError)
-        errors.push({
-          eventId: candidate.eventId,
-          step: 'database',
-          message: updateError.message,
-        })
+        console.error(`[cron/cleanup-media] DB error for event ${candidate.eventId}:`, updateError.message)
+        errors.push({ eventId: candidate.eventId, step: 'database' })
       } else {
         cleanedEventsCount++
       }
@@ -220,7 +239,7 @@ export async function GET(request: Request) {
           message: 'Cleanup finished with partial errors',
           deletedFilesCount,
           cleanedEventsCount,
-          errors,
+          errorCount: errors.length,
         },
         { status: 500 }
       )
@@ -235,8 +254,8 @@ export async function GET(request: Request) {
       cleanedEventsCount,
     })
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : 'Internal Server Error'
-    console.error('Unexpected error in cleanup cron job:', error)
-    return NextResponse.json({ error: message }, { status: 500 })
+    console.error('[cron/cleanup-media] Unexpected error:', error)
+    // No filtrar mensaje de error interno hacia el cliente
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation'
 import { createServerSupabaseClient } from '@/supabase/server'
+import { validateSafeUrl } from '@/lib/sanitize'
 import { DashboardShell } from './DashboardShell'
 
 export default async function DashboardLayout({
@@ -51,7 +52,7 @@ export default async function DashboardLayout({
       workshop={{
         name: workshop?.name || 'Mi Taller',
         slug: workshop?.slug || '',
-        logoUrl: workshop?.logo_url || null,
+        logoUrl: workshop?.logo_url && validateSafeUrl(workshop.logo_url) ? workshop.logo_url : null,
         primaryColor,
       }}
       user={{

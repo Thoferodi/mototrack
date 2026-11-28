@@ -7,8 +7,10 @@ import {
   getFuelLevelLabel,
   getWorkOrderStatusLabel,
   parseMediaUrls,
+  isValidUUID,
 } from '@/lib/workorder-status'
 import { formatBogotaDateTime, formatCOP } from '@/lib/format'
+import { validateSafeUrl } from '@/lib/sanitize'
 import { PrintToolbar } from './PrintToolbar'
 
 export const dynamic = 'force-dynamic'
@@ -75,6 +77,11 @@ export default async function OrderReceiptPage({ params }: ReceiptPageProps) {
 
   if (!user) {
     redirect('/login')
+  }
+
+  // Validar formato UUID antes de consultar (evita fuga de errores PostgreSQL)
+  if (!isValidUUID(params.id)) {
+    return notFound()
   }
 
   const { data: profile } = await supabase
@@ -192,10 +199,10 @@ export default async function OrderReceiptPage({ params }: ReceiptPageProps) {
     ? `${baseUrl}/track/${order.tracking_token}`
     : `${baseUrl}/track`
 
-  const qrSvg = await QRCode.toString(trackingUrl, {
-    type: 'svg',
+  const qrDataUrl = await QRCode.toDataURL(trackingUrl, {
+    type: 'image/png',
     margin: 1,
-    width: 132,
+    width: 264,
     errorCorrectionLevel: 'M',
     color: {
       dark: '#09090b',
@@ -215,7 +222,7 @@ export default async function OrderReceiptPage({ params }: ReceiptPageProps) {
           {/* Encabezado del Taller y Orden */}
           <header className="flex flex-col sm:flex-row sm:items-start justify-between gap-5 pb-5 border-b border-zinc-200">
             <div className="flex items-start gap-4 min-w-0">
-              {workshop?.logo_url ? (
+              {workshop?.logo_url && validateSafeUrl(workshop.logo_url) ? (
                 <div className="w-16 h-16 rounded-xl border border-zinc-200 bg-white p-1.5 flex items-center justify-center shrink-0 overflow-hidden">
                   <img
                     src={workshop.logo_url}
@@ -475,10 +482,12 @@ export default async function OrderReceiptPage({ params }: ReceiptPageProps) {
 
             {/* Columna Derecha: QR al Live Tracker */}
             <div className="rounded-xl border border-zinc-200 bg-zinc-50/70 p-4 flex items-center gap-4">
-              <div
-                aria-label="Código QR de seguimiento en vivo"
-                className="w-[132px] h-[132px] shrink-0 rounded-lg border border-zinc-200 bg-white p-1.5 flex items-center justify-center [&>svg]:w-full [&>svg]:h-full"
-                dangerouslySetInnerHTML={{ __html: qrSvg }}
+              <img
+                src={qrDataUrl}
+                alt="Código QR de seguimiento en vivo"
+                width={132}
+                height={132}
+                className="w-[132px] h-[132px] shrink-0 rounded-lg border border-zinc-200 bg-white p-1.5"
               />
               <div className="min-w-0 space-y-1.5">
                 <p className="text-xs font-extrabold uppercase tracking-wider text-zinc-900">

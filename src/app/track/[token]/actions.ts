@@ -13,7 +13,7 @@ export async function updateItemApprovalStatus(
   if (!isValidUUID(trackingToken)) {
     return { success: false, error: 'Enlace de seguimiento inválido.' }
   }
-  if (!itemId) {
+  if (!itemId || !isValidUUID(itemId)) {
     return { success: false, error: 'Ítem de presupuesto inválido.' }
   }
   if (status !== 'approved' && status !== 'rejected') {
@@ -152,10 +152,11 @@ export async function updateItemApprovalStatus(
     revalidatePath(`/mechanic/order/${order.id}`)
 
     return { success: true, totalAmount: total }
-  } catch (err: any) {
+  } catch (err: unknown) {
+    console.error('[track/token] Error updating item approval:', err)
     return {
       success: false,
-      error: err?.message || 'Error inesperado al actualizar el ítem.',
+      error: 'Error inesperado al actualizar el ítem. Intenta nuevamente.',
     }
   }
 }

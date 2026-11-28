@@ -43,19 +43,19 @@ import {
 } from './actions'
 
 const formSchema = z.object({
-  plate: z.string().min(1, 'La placa es requerida'),
-  customer_name: z.string().min(1, 'El nombre es requerido'),
-  customer_phone: z.string().min(1, 'El WhatsApp es requerido'),
-  motorcycle_make: z.string().min(1, 'La marca es requerida'),
-  motorcycle_model: z.string().min(1, 'El modelo es requerido'),
+  plate: z.string().trim().min(1, 'La placa es requerida').max(20, 'Máximo 20 caracteres'),
+  customer_name: z.string().trim().min(1, 'El nombre es requerido').max(120, 'Máximo 120 caracteres'),
+  customer_phone: z.string().trim().min(4, 'El WhatsApp es requerido').max(30, 'Máximo 30 caracteres'),
+  motorcycle_make: z.string().trim().min(1, 'La marca es requerida').max(80, 'Máximo 80 caracteres'),
+  motorcycle_model: z.string().trim().min(1, 'El modelo es requerido').max(80, 'Máximo 80 caracteres'),
   motorcycle_year: z.preprocess(
     (val) => (val === '' || val === undefined || val === null ? undefined : Number(val)),
     z.number().int('Año inválido').min(1950, 'Año mínimo 1950').max(2100, 'Año inválido').optional()
   ),
-  mileage: z.coerce.number({ invalid_type_error: 'Kilometraje inválido' }).min(0, 'Kilometraje inválido'),
+  mileage: z.coerce.number({ invalid_type_error: 'Kilometraje inválido' }).min(0, 'Kilometraje inválido').max(9_999_999),
   fuel_level: z.enum(['empty', 'low', 'half', 'high', 'full']),
   mechanic_id: z.string().optional(),
-  description: z.string().optional(),
+  description: z.string().max(1000, 'Máximo 1000 caracteres').optional(),
   legal_consent: z.boolean().refine((val) => val === true, {
     message:
       'Debes confirmar la autorización de ingreso, firma electrónica y tratamiento de datos del cliente.',
@@ -611,7 +611,7 @@ export function NewOrderForm({
                   <input
                     id={`photo-${key}`}
                     type="file"
-                    accept="image/*"
+                    accept="image/jpeg,image/png,image/webp"
                     capture="environment"
                     className="hidden"
                     disabled={isSubmitting || isCompressing}

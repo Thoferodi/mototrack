@@ -45,6 +45,14 @@ export function EvidenceCapture({ orderId }: { orderId: string }) {
 
     setError(null)
     setSuccessMsg(null)
+
+    const allowedClientTypes = new Set(['image/jpeg', 'image/png', 'image/webp'])
+    if (selectedFile.type && !allowedClientTypes.has(selectedFile.type.toLowerCase())) {
+      setError('Solo se permiten imágenes JPEG, PNG o WebP.')
+      if (fileInputRef.current) fileInputRef.current.value = ''
+      return
+    }
+
     setIsCompressing(true)
 
     try {
@@ -123,7 +131,7 @@ export function EvidenceCapture({ orderId }: { orderId: string }) {
         <input
           ref={fileInputRef}
           type="file"
-          accept="image/*"
+          accept="image/jpeg,image/png,image/webp"
           capture="environment"
           onChange={handleFileChange}
           disabled={isBusy}

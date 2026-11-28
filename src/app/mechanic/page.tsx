@@ -22,12 +22,16 @@ export default async function MechanicListPage() {
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('id, workshop_id, full_name, role, workshops(name)')
+    .select('id, workshop_id, full_name, role, active, workshops(name)')
     .eq('id', user.id)
     .single()
 
   if (!profile || !profile.workshop_id) {
     redirect('/login')
+  }
+
+  if (profile.active === false) {
+    redirect('/login?error=account_disabled')
   }
 
   const { data: orders, error } = await supabase

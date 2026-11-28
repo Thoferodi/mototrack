@@ -143,7 +143,8 @@ function mapAuthCreateError(error: { message?: string; code?: string }): string 
     return 'El correo electrónico proporcionado no es válido.'
   }
 
-  return error.message || 'No se pudo crear la cuenta del miembro.'
+  console.error('[team] Auth create error:', code || 'unknown')
+  return 'No se pudo crear la cuenta del miembro. Verifica los datos e intenta de nuevo.'
 }
 
 function revalidateTeamPaths() {
@@ -242,11 +243,11 @@ export async function createTeamMember(input: {
         created_at: profileData.created_at,
       },
     }
-  } catch (err: any) {
-    console.error('Error creating team member:', err)
+  } catch (err: unknown) {
+    console.error('[team] Error creating team member:', err)
     return {
       success: false,
-      error: err?.message || 'Error inesperado al crear el miembro del equipo.',
+      error: 'Error inesperado al crear el miembro del equipo.',
     }
   }
 }

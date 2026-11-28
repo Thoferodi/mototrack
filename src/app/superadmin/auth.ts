@@ -1,3 +1,4 @@
+import 'server-only'
 import { createServerSupabaseClient } from '@/supabase/server'
 
 export function parseSuperAdminEmails(raw: string | undefined): Set<string> {

@@ -1,4 +1,5 @@
 import { Database } from '@/types/database.types'
+import { validateSafeUrl } from './sanitize'
 
 export type WorkOrderStatus = Database['public']['Enums']['order_status']
 
@@ -35,12 +36,14 @@ export function normalizePlate(plate: string): string {
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 export function isValidUUID(value: string): boolean {
-  return UUID_REGEX.test(value.trim())
+  return typeof value === 'string' && UUID_REGEX.test(value.trim())
 }
 
 export function parseMediaUrls(mediaUrls: unknown): string[] {
   if (!Array.isArray(mediaUrls)) return []
-  return mediaUrls.filter((u): u is string => typeof u === 'string' && u.length > 0)
+  return mediaUrls.filter(
+    (u): u is string => typeof u === 'string' && u.length > 0 && validateSafeUrl(u)
+  )
 }
 
 export const FUEL_LEVEL_LABELS: Record<string, string> = {
