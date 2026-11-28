@@ -3,6 +3,7 @@
 import { motion } from 'framer-motion'
 import { ArrowRight, ExternalLink } from 'lucide-react'
 import { GlowButton } from './GlowButton'
+import { FREE_TRIAL_WHATSAPP_URL } from './pricing-data'
 
 export function FinalCta() {
   return (
@@ -56,7 +57,7 @@ export function FinalCta() {
           </p>
 
           <div className="mt-9 flex flex-col items-center justify-center gap-3.5 sm:flex-row">
-            <GlowButton href="/login" size="lg">
+            <GlowButton href={FREE_TRIAL_WHATSAPP_URL} external size="lg">
               Crear Cuenta Gratis <ArrowRight className="h-4 w-4" />
             </GlowButton>
             <GlowButton href="/t/taller-demo" variant="secondary" size="lg">

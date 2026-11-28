@@ -16,11 +16,24 @@ export interface PricingPlan {
 }
 
 /**
- * Edita aquí el número de WhatsApp comercial de MotoTrack (formato internacional sin +)
- * y los montos de los planes para Colombia / LATAM.
+ * Número de WhatsApp comercial de MotoTrack (formato internacional sin +)
+ * y montos de los planes para Colombia / LATAM.
  */
-export const COMMERCIAL_WHATSAPP_URL =
-  'https://wa.me/573000000000?text=Hola%20MotoTrack%2C%20quiero%20informaci%C3%B3n%20sobre%20los%20planes%20para%20mi%20taller.'
+export const COMMERCIAL_WHATSAPP_PHONE = '573164052137'
+
+export function buildCommercialWhatsAppUrl(message: string): string {
+  const cleanPhone = COMMERCIAL_WHATSAPP_PHONE.replace(/\D/g, '')
+  return `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`
+}
+
+export const FREE_TRIAL_WHATSAPP_MESSAGE =
+  '¡Hola! Quiero activar la prueba gratis de 14 días de MotoTrack para mi taller de motos. ¿Me ayudas a configurarlo?'
+
+export const FREE_TRIAL_WHATSAPP_URL = buildCommercialWhatsAppUrl(FREE_TRIAL_WHATSAPP_MESSAGE)
+
+export const COMMERCIAL_WHATSAPP_URL = buildCommercialWhatsAppUrl(
+  'Hola MotoTrack, quiero información sobre los planes para mi taller.'
+)
 
 export const PRICING_PLANS: PricingPlan[] = [
   {
@@ -32,7 +45,8 @@ export const PRICING_PLANS: PricingPlan[] = [
     usdApproxMonthly: '~USD $28/mes',
     usdApproxAnnual: '~USD $20/mes',
     ctaLabel: 'Empezar Gratis 14 Días',
-    ctaHref: '/login',
+    ctaHref: FREE_TRIAL_WHATSAPP_URL,
+    external: true,
     limits: [
       '$2.800 COP diarios',
       '1 sede / taller',
@@ -59,7 +73,8 @@ export const PRICING_PLANS: PricingPlan[] = [
     usdApproxMonthly: '~USD $52/mes',
     usdApproxAnnual: '~USD $37/mes',
     ctaLabel: 'Probar Taller Pro Gratis',
-    ctaHref: '/login',
+    ctaHref: FREE_TRIAL_WHATSAPP_URL,
+    external: true,
     limits: [
       '$7.300 COP diarios',
       '1 sede con personal ampliado',

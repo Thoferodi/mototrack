@@ -6,6 +6,7 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { Menu, Search, X, ArrowRight } from 'lucide-react'
 import { MotoTrackBrand } from '@/components/brand/MotoTrackBrand'
 import { GlowButton } from './GlowButton'
+import { FREE_TRIAL_WHATSAPP_URL } from './pricing-data'
 
 const NAV_LINKS = [
   { label: 'Funcionalidades', href: '#funcionalidades' },
@@ -55,7 +56,7 @@ export function Navbar() {
             Iniciar Sesión
           </Link>
 
-          <GlowButton href="/login" size="sm">
+          <GlowButton href={FREE_TRIAL_WHATSAPP_URL} external size="sm">
             Probar Gratis <ArrowRight className="h-3.5 w-3.5" />
           </GlowButton>
         </div>
@@ -122,7 +123,8 @@ export function Navbar() {
                   Iniciar Sesión
                 </Link>
                 <GlowButton
-                  href="/login"
+                  href={FREE_TRIAL_WHATSAPP_URL}
+                  external
                   size="md"
                   className="w-full"
                 >

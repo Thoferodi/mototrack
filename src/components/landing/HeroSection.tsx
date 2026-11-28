@@ -15,6 +15,7 @@ import {
   Wrench,
 } from 'lucide-react'
 import { GlowButton } from './GlowButton'
+import { FREE_TRIAL_WHATSAPP_URL } from './pricing-data'
 
 type PreviewTab = 'kanban' | 'mechanic' | 'tracker'
 
@@ -97,7 +98,7 @@ export function HeroSection() {
 
           {/* Botones CTA */}
           <div className="mt-9 flex flex-col items-center justify-center gap-3.5 sm:flex-row">
-            <GlowButton href="/login" size="lg">
+            <GlowButton href={FREE_TRIAL_WHATSAPP_URL} external size="lg">
               Probar Gratis <ArrowRight className="h-4 w-4" />
             </GlowButton>
 
